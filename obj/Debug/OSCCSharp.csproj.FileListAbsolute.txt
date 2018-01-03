@@ -10,3 +10,11 @@ C:\Users\rajan\Desktop\osc_csharp\obj\Debug\OSCCSharp.pdb
 C:\Users\rajan\Desktop\osc_csharp\bin\Debug\Newtonsoft.Json.dll
 C:\Users\rajan\Desktop\osc_csharp\bin\Debug\Newtonsoft.Json.xml
 C:\Users\rajan\Desktop\osc_csharp\bin\Debug\OSCCSharp.dll
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\bin\Debug\OSCCSharp.dll
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\bin\Debug\OSCCSharp.pdb
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\bin\Debug\Newtonsoft.Json.dll
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\bin\Debug\Newtonsoft.Json.xml
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\obj\Debug\OSCCSharp.csprojResolveAssemblyReference.cache
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\obj\Debug\OSCCSharp.csproj.CoreCompileInputs.cache
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\obj\Debug\OSCCSharp.dll
+C:\Users\rajan\Desktop\rest_wrappers\osc_csharp\obj\Debug\OSCCSharp.pdb

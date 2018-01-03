@@ -236,15 +236,12 @@ namespace OSCCSharp
                     List<Dictionary<string, string>> resultArray = IterateThroughRows(item);
                     finalList.Add(resultArray);
                 }
-
-                if(finalList.Count == 1)
-                {
-                    return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
-                }
-                else
-                {
-                    return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
-                }
+                
+                return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                
+            }
+            else if (data != null && data.Items == null) {
+                return JsonConvert.SerializeObject(data, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
             }
             else
             {
@@ -257,17 +254,20 @@ namespace OSCCSharp
 
             var finalHash = new List<Dictionary<string, string>>();
 
-            foreach (var row in item.Rows)
+            if(item.Rows != null)
             {
-                var objHash = new Dictionary<string, string>();
-                for (int j = 0; j < item.ColumnNames.Count; j++)
+                foreach (var row in item.Rows)
                 {
-                    objHash.Add(item.ColumnNames[j], row[j]);
+                    var objHash = new Dictionary<string, string>();
+                    for (int j = 0; j < item.ColumnNames.Count; j++)
+                    {
+                        objHash.Add(item.ColumnNames[j], row[j]);
+                    }
+                    finalHash.Add(objHash);
+
                 }
-                finalHash.Add(objHash);
 
             }
-
             return finalHash;
         }
 
