@@ -92,7 +92,7 @@ namespace ConsoleApp
             var query = "SELECT * FROM Contacts C WHERE CreatedTime > '2005-01-10T04:00:00Z'";
             var queryResults = q.Query(query); // Run the query
             
-			var queryObjects = JsonConvert.DeserializeObject<List<object>>(queryResults);
+            var queryObjects = JsonConvert.DeserializeObject<List<object>>(queryResults);
             foreach (object queryResult in queryObjects)
             {
                 var queryResultString = JsonConvert.SerializeObject(queryResult);
