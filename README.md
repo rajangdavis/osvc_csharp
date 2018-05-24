@@ -1,4 +1,4 @@
-# OSCCSharp
+# OSvCCSharp
 
 An (under development) C# library for using the [Oracle Service Cloud REST API](https://docs.oracle.com/cloud/latest/servicecs_gs/CXSVC/) influenced by the [ConnectPHP API](http://documentation.custhelp.com/euf/assets/devdocs/november2016/Connect_PHP/Default.htm)
 
@@ -16,27 +16,27 @@ All of the HTTP methods should work on any version of Oracle Service Cloud since
 
 
 ## Use Cases
-You can use this Node Library for basic scripting and microservices.
+You can use this C# Library for basic scripting and microservices.
 
 The main features that work to date are as follows:
 
 1. [Simple configuration](#client-configuration)
-2. Basic CRUD Operations via HTTP Methods
+2. Running ROQL queries [either 1 at a time](#osvccsharpqueryresults-example) or [multiple queries in a set](#osvccsharpqueryresultsset-example)
+3. [Running Reports with filters](#osvccsharpanalyticsreportsresults)
+4. Basic CRUD Operations via HTTP Methods
 	1. [Create => Post](#create)
 	2. [Read => Get](#read)
 	3. [Update => Patch](#update)
 	4. [Destroy => Delete](#delete)
 
-## Installing C# and the .NET runtime (for Windows)
+<!-- ## Installing C# and the .NET runtime (for Windows)
 
 
-## Installation
-
-
+## Installation -->
 
 ## Client Configuration
 
-An OSCNodeClient class lets the library know which credentials and interface to use for interacting with the Oracle Service Cloud REST API.
+An OSvCCSharp.Client class lets the library know which credentials and interface to use for interacting with the Oracle Service Cloud REST API.
 This is helpful if you need to interact with multiple interfaces or set different headers for different objects.
 
 ```C#
@@ -44,136 +44,302 @@ This is helpful if you need to interact with multiple interfaces or set differen
 // Configuration is as simple as requiring the package
 // and passing in an object
 
-const OSCNode = require('osc_node');
+// Client Configuration
+var rnClient = new OSvCCSharp.Client(
+    username: AppSettings["OSC_ADMIN"],
+    password: AppSettings["OSC_PASSWORD"],
+    interfaceName: AppSettings["OSC_SITE"],
 
-# Configuration Client
-var rn_client = OSCNode.Client({
-	username: env['OSC_ADMIN'],
-	password: env['OSC_PASSWORD'],
-	interface: env['OSC_SITE'],
-
-	// Optional Configuration Settings
-	demo_site: true,			// Changes domain from 'custhelp' to 'rightnowdemo'
-
-	// STILL TO BE IMPLEMENTED
-	// change_version: 'v1.4', 		// Changes REST API version, default is 'v1.3'
-	// ssl_off: true,			// Turns off SSL verification
-	// suppress_rules: true			// Supresses Business Rules
-});
+    // Optional Configuration Settings
+    demo_site = false, 				// Changes domain from 'custhelp' to 'rightnowdemo'
+    version = "v1.4", 				// Changes REST API version, default is 'v1.3'
+    ssl_verify = false, 				// Turns off SSL verification
+    rule_suppression = false 		// Supresses Business Rules
+);
 
 
 ```
 
-## OSCNodeQueryResults example
+## OSvCCSharp.QueryResults example
 
 This is for running one ROQL query. Whatever is allowed by the REST API (limits and sorting) is allowed with this library.
 
-OSCNodeQueryResults only has one function: 'query', which takes an OSCNodeClient object and string query (example below).
+OSvCCSharp.QueryResults only has one function: 'query', which takes an OSvCCSharp.Client object and string query (example below).
 
-```node
-const OSCNode = require('osc_node');
-const env = process.env;
+```C#
 
-var rn_client = OSCNode.Client({
-	username: env['OSC_ADMIN'],
-	password: env['OSC_PASSWORD'],
-	interface: env['OSC_SITE'],
-	demo_site:true
-});
+using static System.Console;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using static OSvCCSharp.Utils;
+using static System.Configuration.ConfigurationManager;
 
-var contactsQuery = `DESCRIBE`
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
 
-var options = {
-	client: rn_client,
-	query: contactsQuery
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],    
+                password: AppSettings["OSC_PASSWORD"], 
+                interfaceName: AppSettings["OSC_SITE"]
+            );
+
+			var q = new OSvCCSharp.QueryResults(rnClient);
+			var query = "SELECT * FROM Contacts C WHERE CreatedTime > '2005-01-10T04:00:00Z'";
+            var queryResults = q.Query(query); // Run the query
+            
+			var queryObjects = JsonConvert.DeserializeObject<List<object>>(queryResults);
+            foreach (object queryResult in queryObjects)
+            {
+                var queryResultString = JsonConvert.SerializeObject(queryResult);
+                JToken token = JObject.Parse(queryResultString);
+                var contactId = (int)token.SelectToken("id");
+                WriteLine($"Here is the contact ID: { contactId }");
+            }
+        }
+    }
 }
 
-OSCNode.QueryResults.query(options,(err,results) =>{
-	results.map(function(result){
-		console.log(result);
-	})
-});
-
 
 ```
 
-<!-- 
-### 'dti' => date to iso8601
+## OSvCCSharp.QueryResultsSet example
 
-dti lets you type in a date and get it in ISO8601 format. Explicit date formatting is best.
+This is for running multiple ROQL queries. Whatever is allowed by the REST API (limits and sorting) is allowed with this library.
 
-```node
+OSvCCSharp.QueryResultsSet only has one function: 'query', which takes an OSvCCSharp.Client object and string query (example below).
 
-dti("January 1st, 2014") # => 2014-01-01T00:00:00-08:00  # => 1200 AM, January First of 2014
+```C#
 
-dti("January 1st, 2014 11:59PM MDT") # => 2014-01-01T23:59:00-06:00 # => 11:59 PM Mountain Time, January First of 2014
 
-dti("January 1st, 2014 23:59 PDT") # => 2014-01-01T23:59:00-07:00 # => 11:59 PM Pacific Time, January First of 2014
+using static System.Console;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using static OSvCCSharp.Utils;
+using static System.Configuration.ConfigurationManager;
 
-dti("January 1st") # => 2017-01-01T00:00:00-08:00 # => 12:00 AM, January First of this Year
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],    
+                password: AppSettings["OSC_PASSWORD"], 
+                interfaceName: AppSettings["OSC_SITE"]
+            );
+
+			var mq = new OSvCCSharp.QueryResultsSet(rnClient);
+            var queries = new List<Dictionary<string, string>>()
+            {
+                new Dictionary<string,string>()
+                {
+                    {"query","DESCRIBE answers"}
+                    {"key","answersSchema"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT * FROM answers"}
+                    {"key","answers"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","DESCRIBE serviceProducts"}
+                    {"key","productsSchema"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT * FROM serviceProducts"}
+                    {"key","products"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","DESCRIBE serviceCategories"}
+                    {"key","categoriesSchema"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT * FROM serviceCategories"}
+                    {"key","categories"},
+                },
+            };
+
+            var mqResults = mq.QuerySet(queries);
+            WriteLine(mqResults["products"]);
+            WriteLine(mqResults["productsSchema"]);
+            WriteLine(mqResults["categories"]);
+            WriteLine(mqResults["categoriesSchema"]);
+            WriteLine(mqResults["answers"]);
+            WriteLine(mqResults["answersSchema"]);
+        }
+    }
+}
 
 ```
- -->
+
+## OSvCCSharp.AnalyticsReportResults
+
+You can create a new instance either by the report 'id' or 'lookupName'.
+
+OSvCCSharp.AnalyticsReportResults only has one function: 'run', which takes an OSvCRuby::Client object.
+
+OSvCCSharp.AnalyticsReportResults have the following properties: 'id', 'lookupName', and 'filters'. More on filters and supported datetime methods are below this OSvCCSharp.AnalyticsReportResults example script.
+
+```C#
+
+using static System.Console;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using static OSvCCSharp.Utils;
+using static System.Configuration.ConfigurationManager;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],    
+                password: AppSettings["OSC_PASSWORD"], 
+                interfaceName: AppSettings["OSC_SITE"]
+            );
+
+            var arr = new OSvCCSharp.AnalyticsReportResults(rnClient);
+            arr.filters = new List<Dictionary<string, string>>()
+            {
+                new Dictionary<string, string>()
+                {
+                    { "name", "search_ex" },
+                    { "values", "Maestro" }
+                }
+            };
+            var arrResults = arr.Run(id: 176);
+            var arrObjects = JsonConvert.DeserializeObject<List<object>>(arrResults);
+            foreach (object arrResult in arrObjects)
+            {
+                WriteLine(JsonConvert.SerializeObject(arrResult));
+            }
+        }
+    }
+}
+
+```
 
 ## Basic CRUD operations
 
 ### CREATE
-```node
-//// OSCNode.Connect.post(options, callback)
-//// returns callback function
+```C#
 
-// Here's how you could create a new ServiceProduct object
-// using Node variables and objects (sort of like JSON)
+using System;
+using System.Collections.Generic;
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
 
-const OSCNode = require('osc_node');
-const env = process.env;
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
 
-// Create an OSCNode.Client object
-var rn_client = OSCNode.Client({
-	username: env['OSC_ADMIN'],
-	password: env['OSC_PASSWORD'],
-	interface: env['OSC_SITE'],
-	demo_site: true
-});
+            // Client Configuration
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],         
+                password: AppSettings["OSC_PASSWORD"],      
+                interfaceName: AppSettings["OSC_SITE"],
+            );
 
+            //// Connect Object for HTTP Requests
+            var connect = new OSvCCSharp.Connect(rnClient);
 
-// JSON object
-// containing data
-// for creating
-// a new product 
+            //// POST Request
+            var newProd = new Dictionary<string, object>()
+            {
+                {"adminVisibleInterfaces",new List<Dictionary<string, int>>()
+                {
+                    new Dictionary<string, int>()
+                    {
+                        {"id", 1 }
+                    }
+                }},
+                {"descriptions",new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>()
+                    {
+                        {"labelText", "creating a new ServiceProduct" },
+                        {"language", new Dictionary<string,int>(){
+                            { "id", 1}
+                        } }
+                    }
+                }},
+                {"displayOrder", 3 },
+                {"dispositionLinks",new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>()
+                    {
+                        {"serviceDisposition", new Dictionary<string,string>(){
+                            { "lookupName", "Agent: Knowledge"}
+                        } }
+                    }
+                }},
+                {"categoryLinks",new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string, object>()
+                    {
+                        {"serviceCategory", new Dictionary<string,string>(){
+                            { "lookupName", "Alerts"}
+                        } }
+                    }
+                }},
+                {"adminVisibleInterfaces",new List<Dictionary<string, int>>()
+                {
+                    new Dictionary<string, int>()
+                    {
+                        {"id", 1 }
+                    }
+                }},
+                {"endUserVisibleInterfaces",new List<Dictionary<string, int>>()
+                {
+                    new Dictionary<string, int>()
+                    {
+                        {"id", 1 }
+                    }
+                }},
+                {"names",new List<Dictionary<string, object>>
+                {
+                    new Dictionary<string, object>()
+                    {
+                        { "labelText","NEW_PRODUCT" },
+                        { "language", new Dictionary<string, int>()
+                            {
+                                {"id", 1}
+                            }
+                        }
+                    }
+                }},
+                {"parent",new List<Dictionary<string, int>>()
+                {
+                    new Dictionary<string, int>()
+                    {
+                        {"id", 172 }
+                    }
+                }},
+            };
 
-var newProduct = {
-  'names': [{
-    'labelText': 'newProduct',
-    'language': {
-      'id': 1
+            var createdProduct = connect.Post("serviceProducts", newProd); // returns JSON body
+        }
     }
-  }],
-  'displayOrder': 4,
-  'adminVisibleInterfaces': [{
-    'id': 1
-  }],
-  'endUserVisibleInterfaces': [{
-    'id': 1
-  }]
-};
-
-var options = {
-	client: rn_client,
-	    url:'serviceProducts',
-	json: newProduct
 }
-
-OSCNode.Connect.post(options,(err,body,response) => {
-	if(err){
-		console.log(err);
-	}else{
-		console.log(response.statusCode); // 201
-		console.log(JSON.stringify(body, null, 4)); // JSON representation
-		// Do something here
-		return body; // Callback
-	}
-});
 
 ```
 
@@ -183,36 +349,42 @@ OSCNode.Connect.post(options,(err,body,response) => {
 
 
 ### READ
-```node
-//// OSCNode.Connect.get(options, callback)
+```C#
+//// OSvCCSharp.get(options, callback)
 //// returns callback function
 // Here's how you could get an instance of ServiceProducts
 
-const OSCNode = require('osc_node');
-const env = process.env;
+//// OSvCCSharp.Delete(url)
+//// returns string
+// Here's how you could delete a serviceProduct object
+	
+using System;
+using System.Collections.Generic;
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
 
-// Create an OSCNode.Client object
-var rn_client = OSCNode.Client({
-	username: env['OSC_ADMIN'],
-	password: env['OSC_PASSWORD'],
-	interface: env['OSC_SITE'],
-	demo_site: true
-});
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
 
-var options = {
-	client: rn_client,
-	url:'serviceProducts/168'
-};
+            // Client Configuration
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                interfaceName: AppSettings["OSC_SITE"],
+                demoSite: true,
+                suppressRules: true
+            );
 
-OSCNode.Connect.get(options,(err,body,response) => {
-	if(err){
-		console.log(err);
-	}else{
-		console.log(response.statusCode); // 201
-		console.log(JSON.stringify(body, null, 4)); // JSON representation
-		return body;
-	}
-});
+            //// Connect Object for HTTP Requests
+            var connect = new OSvCCSharp.Connect(rnClient);
+            WriteLine(connect.Get("serviceProducts/174"));   // returns JSON object
+        }
+    }
+}
 ```
 
 
@@ -221,40 +393,164 @@ OSCNode.Connect.get(options,(err,body,response) => {
 
 
 ### UPDATE
-```node
-//// OSCNode.Connect.patch(options, callback)
-//// returns callback
+```C#
+//// OSvCCSharp.Patch(url, json)
+//// returns string
 // Here's how you could update an Answer object
 // using JSON objects
 // to set field information
 
-// JSON Object
-// With data for updating
-var productUpdated = {
-  'name': [{
-    'labelText': 'newProduct UPDATED',
-    'language': {
-      'id': 1
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            // Client Configuration
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                interfaceName: AppSettings["OSC_SITE"],
+                suppressRules: true
+            );
+
+            //// Connect Object for HTTP Requests
+            var connect = new OSvCCSharp.Connect(rnClient);
+
+            // Run multiple queries
+            // assign to keys
+
+            var mq = new OSvCCSharp.QueryResultsSet(rnClient);
+            var queries = new List<Dictionary<string, string>>()
+            {
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT COUNT() AS count FROM siteInterfaces"}
+                    {"key","interfaceCount"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT serviceProducts.categoryLinks.serviceCategoryList.serviceCategory.id FROM serviceProducts WHERE id = 174"}
+                    {"key","catLinks"},
+                },
+                new Dictionary<string,string>()
+                {
+                    {"query","SELECT serviceProducts.dispositionLinks.serviceDispositionList.serviceDisposition.id FROM serviceProducts WHERE id = 174"}
+                    {"key","dispLinks"},
+                },
+            };
+
+            var mqResults = mq.QuerySet(queries);
+
+            var interFaceCount = mqResults["interFaceCount"][0]["count"];
+            var catLinks = mqResults["catLinks"];
+            var dispLinks = mqResults["dispLinks"];
+
+            // Build the JSON object
+            var updateJson = new Dictionary<string, object>()
+            {
+                {"descriptions",new List<Dictionary<string, object>>
+                    {
+                    new Dictionary<string, object>()
+                        {
+                            { "labelText","updating a ServiceProduct " },
+                            { "language", new Dictionary<string, int>()
+                                {
+                                    {"id", 1}
+                                }
+                            }
+                        }
+                    }
+                },
+                {"displayOrder",2},
+                {"names",new List<Dictionary<string, object>>
+                    {
+                    new Dictionary<string, object>()
+                        {
+                            { "labelText","updating the privious " },
+                            { "language", new Dictionary<string, int>()
+                                {
+                                    {"id", 1}
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            
+            // if the adminvisibleinterfaces count = 0
+            //  then set the first admin interface to ID = 1
+
+            if(interFaceCount == 0)
+            {
+                updateJson["adminVisibleInterfaces"] = new List<Dictionary<string,object>>{
+                    new Dictionary<string,object>(){
+                           {"id", 1}
+                    }
+                }
+            }
+
+
+            foreach (Dictionary<string,object> cl in catLinks)
+            {
+                if ((int)cl["id"] == 1)
+                {
+                    cl["id"] = 2;
+
+                    // Makes a copy of catLinks and returns an arry of these:
+                    // { 'serviceCategory': { "id": catLink["id"]} }
+                    updateJson["categoryLinks"] = catLinks.Select(catLink => new Dictionary<string, Dictionary<string, object>>() {
+                        { "serviceCategory",new Dictionary<string, object>(){
+                            {"id",catLink["id"] }
+                        } }
+                    }).ToArray();
+
+                }
+            }
+
+            
+            // Loop through dispLinks
+            foreach (Dictionary<string,object> dl in dispLinks)
+            {
+                if ((int)dl["id"] == 1)
+                {
+                    dl["id"] = 2;
+
+                    // Makes a copy of dispLinks and returns an arry of these:
+                    // { 'serviceDisposition': { "id": dispLink["id"]} }
+                    updateJson["dispositionLinks"] = dispLinks.Select(dispLink => new Dictionary<string, Dictionary<string, object>>() {
+                        { "serviceDisposition",new Dictionary<string, object>(){
+                            {"id",dispLink["id"] }
+                        } }
+                    }).ToArray();
+
+                }
+            }
+
+            if(interFaceCount == 0)
+            {
+                updateJson["endUserVisibleInterfaces"] = new List<Dictionary<string,object>>{
+                    new Dictionary<string,object>(){
+                           {"id", 1}
+                    }
+                }
+            }
+
+            WriteLine(updateJson);
+
+            var updatedProduct = connect.Post("serviceProducts/174", updateJson); // returns empty string
+        }
     }
-  }]
-};
-
-
-var options = {
-	client: rn_client,
-	url:'serviceProducts/170',
-	json: productUpdated
 }
-
-OSCNode.Connect.patch(options,(err,body,response) => {
-	if(err){
-		console.log(err);
-	}else{
-		console.log(response.statusCode); // 201
-		console.log(body); // empty
-		return body;
-	}
-});
 
 
 ```
@@ -262,24 +558,37 @@ OSCNode.Connect.patch(options,(err,body,response) => {
 
  
 ### DELETE
-```node
-//// OSCNode.Connect.delete(options, callback)
-//// returns callback
+```C#
+//// OSvCCSharp.Delete(url)
+//// returns string
 // Here's how you could delete a serviceProduct object
+	
+using System;
+using System.Collections.Generic;
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
 
- 	var options = { 
-		client: rn_client,
- 	 	url:'serviceProducts/169'
- 	}
-  
-	OSCNode.Connect.delete(options,(err,body,response) => {
-		if(err){
-			console.log(err);
-		}else{
-			console.log(response.statusCode); // 200
-			console.log(body); // Empty
-			return body;
-		}
-	});
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            // Client Configuration
+            var rnClient = new OSvCCSharp.Client(
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                interfaceName: AppSettings["OSC_SITE"],
+                demoSite: true,
+                suppressRules: true
+            );
+
+            //// Connect Object for HTTP Requests
+            var connect = new OSvCCSharp.Connect(rnClient);
+            WriteLine(connect.Delete("serviceProducts/174"));   // returns empty string
+        }
+    }
+}
 
 ```

@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2005
+VisualStudioVersion = 15.0.27004.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OSCCSharp", "OSCCSharp.csproj", "{5FCB55D0-C7A4-4D0A-A5CF-0D7E492CBE60}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OSvCCSharp", "OSvCCSharp.csproj", "{5FCB55D0-C7A4-4D0A-A5CF-0D7E492CBE60}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,6 +20,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {FEEBDC4F-4BD8-4C65-97FC-DEB1ADF1B0E0}
+		SolutionGuid = {B28DE7E0-F161-45AA-BC78-D157E1D8743C}
 	EndGlobalSection
 EndGlobal

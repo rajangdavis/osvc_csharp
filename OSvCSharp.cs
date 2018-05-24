@@ -7,7 +7,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace OSCCSharp
+namespace OSvCCSharp
 {
     // Handles the JSON Response
     internal partial class JsonResponse
@@ -202,7 +202,7 @@ namespace OSCCSharp
                     if(res == null)
                     {
 
-                        return "{ 'type': '"+ resourceUrl +"','title': 'Invalid URL',  'status': 400, 'detail': 'The URL you are requesting is bad; please make sure you have the interface named spelt correctly','instance': '"+ resourceUrl + "','o:errorCode': 'OSCCSharp Generated Error'}";
+                        return "{ 'type': '"+ resourceUrl +"','title': 'Invalid URL',  'status': 400, 'detail': 'The URL you are requesting is bad; please make sure you have the interface named spelt correctly','instance': '"+ resourceUrl + "','o:errorCode': 'OSvCCSharp Generated Error'}";
                     }
                     else
                     {
@@ -281,7 +281,7 @@ namespace OSCCSharp
 
         public string Query(string query)
         {
-            Connect request = new OSCCSharp.Connect(client);
+            Connect request = new OSvCCSharp.Connect(client);
             var results = new NormalizeResults();
             return results.Normalize(request.Get($"queryResults?query={query}"));
         }
@@ -363,7 +363,7 @@ namespace OSCCSharp
             }
             
 
-            Connect request = new OSCCSharp.Connect(client);
+            Connect request = new OSvCCSharp.Connect(client);
             var results = new NormalizeResults();
             var reportRequest = Item.FromJson(request.Post("analyticsReportResults", jsonData));
             return JsonConvert.SerializeObject(results.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
