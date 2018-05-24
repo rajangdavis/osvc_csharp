@@ -51,10 +51,10 @@ var rnClient = new OSvCCSharp.Client(
     interfaceName: AppSettings["OSC_SITE"],
 
     // Optional Configuration Settings
-    demo_site = false, 				// Changes domain from 'custhelp' to 'rightnowdemo'
-    version = "v1.4", 				// Changes REST API version, default is 'v1.3'
-    ssl_verify = false, 				// Turns off SSL verification
-    rule_suppression = false 		// Supresses Business Rules
+    demo_site: false, 				// Changes domain from 'custhelp' to 'rightnowdemo'
+    version: "v1.4", 				// Changes REST API version, default is 'v1.3'
+    ssl_verify: false, 				// Turns off SSL verification
+    rule_suppression: false 		// Supresses Business Rules
 );
 
 
@@ -88,8 +88,8 @@ namespace ConsoleApp
                 interfaceName: AppSettings["OSC_SITE"]
             );
 
-			var q = new OSvCCSharp.QueryResults(rnClient);
-			var query = "SELECT * FROM Contacts C WHERE CreatedTime > '2005-01-10T04:00:00Z'";
+            var q = new OSvCCSharp.QueryResults(rnClient);
+            var query = "SELECT * FROM Contacts C WHERE CreatedTime > '2005-01-10T04:00:00Z'";
             var queryResults = q.Query(query); // Run the query
             
 			var queryObjects = JsonConvert.DeserializeObject<List<object>>(queryResults);
