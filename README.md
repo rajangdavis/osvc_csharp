@@ -54,7 +54,7 @@ var rnClient = new OSvCCSharp.Client(
     demo_site: false, 				// Changes domain from 'custhelp' to 'rightnowdemo'
     version: "v1.4", 				// Changes REST API version, default is 'v1.3'
     ssl_verify: false, 				// Turns off SSL verification
-    rule_suppression: false         // Supresses Business Rules
+    rule_suppression: false                 // Supresses Business Rules
 );
 
 
