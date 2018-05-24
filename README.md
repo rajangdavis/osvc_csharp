@@ -136,7 +136,7 @@ namespace ConsoleApp
                 interfaceName: AppSettings["OSC_SITE"]
             );
 
-			var mq = new OSvCCSharp.QueryResultsSet(rnClient);
+            var mq = new OSvCCSharp.QueryResultsSet(rnClient);
             var queries = new List<Dictionary<string, string>>()
             {
                 new Dictionary<string,string>()
