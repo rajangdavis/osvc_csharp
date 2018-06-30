@@ -46,6 +46,7 @@ namespace OSvCCSharp
         public string Type { get; set; }
     }
 
+
     internal partial class JsonError
     {
         internal static JsonError FromJson(string json) => JsonConvert.DeserializeObject<JsonError>(json, Converter.Settings);
@@ -65,7 +66,7 @@ namespace OSvCCSharp
         internal static string ToJson(this JsonResponse self) => JsonConvert.SerializeObject(self, Converter.Settings);
     }
 
-    internal class Converter
+    static class Converter
     {
         internal static readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -82,93 +83,102 @@ namespace OSvCCSharp
     {
         public string username;
         public string password;
-        public string interfaceName;
+        public string interface_;
+        public string session;
+        public string oauth;
         public string version = "v1.3";
-        public bool ssl_verify = true;
-        public bool rule_suppression = false;
+        public bool no_ssl_verify = false;
+        public bool suppress_rules = false;
         public bool demo_site = false;
+        public string access_token;
 
-        public void SetUsername(string un) => username = un ?? throw new ArgumentNullException(nameof(un));
-        public void SetPassword(string pw) => password = pw ?? throw new ArgumentNullException(nameof(pw));
-        public void SetInterface(string intf) => interfaceName = intf ?? throw new ArgumentNullException(nameof(intf));
-        public void SetVersion(string ver) => version = ver ?? throw new ArgumentNullException(nameof(ver));
-        public void ChangeSSL(bool sslVerify) => ssl_verify = sslVerify;
-        public void SuppressRules(bool suppressRules) => rule_suppression = suppressRules;
+        public void SetUsername(string un) => username = un;
+        public void SetPassword(string pw) => password = pw;
+        public void SetInterface(string intf) => interface_ = intf ?? "";
+        public void SetVersion(string ver) => version = ver ?? "v1.3";
+        public void SetSession(string sessionVar) => session = sessionVar;
+        public void SetOAuth(string oauthVar) => oauth = oauthVar;
+        public void ChangeSSL(bool noSslVerify) => no_ssl_verify = noSslVerify;
+        public void SuppressRules(bool suppressRules) => suppress_rules= suppressRules;
         public void IsDemo(bool demoSite) => demo_site = demoSite;
+        public void SetAccessToken(string at) => access_token= at;
     }
 
     public class Client
     {
         internal Configuration config;
 
-        public Client(string username, string password, string interfaceName, bool sslVerify = true, bool suppressRules = false, bool demoSite = false)
+        public Client(string username = "", string password = "", string interface_ = "", string version = "v1.3", string session ="", string oauth = "", string access_token = "", bool no_ssl_verify = false, bool suppress_rules = false, bool demo_site = false)
         {
             Configuration configuration = new Configuration();
             configuration.SetUsername(username);
             configuration.SetPassword(password);
-            configuration.SetInterface(interfaceName);
-            configuration.ChangeSSL(sslVerify);
-            configuration.IsDemo(demoSite);
+            configuration.SetInterface(interface_);
+            configuration.SetSession(session);
+            configuration.SetVersion(version);
+            configuration.SetOAuth(oauth);
+            configuration.ChangeSSL(no_ssl_verify);
+            configuration.IsDemo(demo_site);
+            configuration.SetAccessToken(access_token);
+
             config = configuration;
-        }
-
-        public void ChangeVersion(string versionToChangeTo)
-        {
-            if (string.IsNullOrEmpty(versionToChangeTo))
-            {
-                throw new ArgumentException("message", nameof(versionToChangeTo));
-            }
-
-            config.SetVersion(versionToChangeTo);
         }
 
     }
 
-
-    public class Connect
+    public partial class Connect
     {
-        protected Client client;
+        // protected Client client;
 
-        public Connect(Client clientVar) => client = clientVar ?? throw new ArgumentNullException(nameof(clientVar));
-
-        public string Get(string url)
+        public string Get( Dictionary<string, object> options)
         {
-
-            return WebRequestMethod(url, "GET");
+            string url = (string)options["url"];
+            Client client = (Client)options["client"];
+            return WebRequestMethod(client, url, "GET");
             
         }
 
-        public string Post(string url, object jsonData)
+        public string Post(Dictionary<string, object> options)
         {
-
-            return WebRequestMethod(url, "POST", data: jsonData);
+            string url = (string)options["url"];
+            Client client = (Client)options["client"];
+            string resourceUrl = UrlFormat(url, client);
+            Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
+            return WebRequestMethod(client, url, "POST", data: jsonData);
 
         }
 
-        public string Patch(string url, object jsonData)
+        public string Patch(Dictionary<string, object> options)
         {
+            string url = (string)options["url"];
+            Client client = (Client)options["client"];
+            Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
             var headers = new Dictionary<string, string>() {
                 {"X-HTTP-Method-Override","PATCH"}
             };
-            return WebRequestMethod(url, "POST", data: jsonData, headers: headers);
+            return WebRequestMethod(client, url, "POST", data: jsonData, headers: headers);
 
         }
 
-        public string Delete(string url)
+        public string Delete(Dictionary<string, object> options)
         {
-
-            return WebRequestMethod(url, "DELETE");
+            string url = (string)options["url"];
+            Client client = (Client)options["client"];
+            return WebRequestMethod(client, url, "DELETE");
 
         }
 
-        private string WebRequestMethod(string url, string method, object data = null, Dictionary<string, string> headers = null)
+        public string Options(Dictionary<string, object> options)
         {
-            if (url == null)
-            {
-                throw new ArgumentNullException(nameof(url));
-            }
+            string url = (string)options["url"];
+            Client client = (Client)options["client"];
+            return WebRequestMethod(client, url, "OPTIONS");
 
-            string resourceUrl = UrlFormat(url);
+        }
+
+        private string WebRequestMethod(Client client, string url = "", string method = "GET", object data = null, Dictionary<string, string> headers = null)
+        {
+            string resourceUrl = UrlFormat(url, client);
             WebRequest req = WebRequest.Create(resourceUrl);
             req.Method = method;
             if(headers != null)
@@ -213,10 +223,10 @@ namespace OSvCCSharp
             }
         }
 
-        private string UrlFormat(string resourceUrl)
+        private string UrlFormat(string resourceUrl, Client client)
         {
             string custOrDemo = client.config.demo_site == false ? "custhelp" : "rightnowdemo";
-            return $"https://{client.config.interfaceName}.{custOrDemo}.com/services/rest/connect/{client.config.version}/{resourceUrl}";
+            return $"https://{client.config.interface_}.{custOrDemo}.com/services/rest/connect/{client.config.version}/{resourceUrl}";
         }
 
     }
@@ -275,15 +285,23 @@ namespace OSvCCSharp
 
     public class QueryResults
     {
-        protected Client client;
 
-        public QueryResults(Client clientVar) => client = clientVar ?? throw new ArgumentNullException(nameof(clientVar));
-
-        public string Query(string query)
+        public string Query(Dictionary<string,object> options)
         {
-            Connect request = new OSvCCSharp.Connect(client);
+            Connect request = new OSvCCSharp.Connect();
             var results = new NormalizeResults();
-            return results.Normalize(request.Get($"queryResults?query={query}"));
+
+            string query = (string)options["query"];
+
+            Client client = (Client)options["client"];
+
+            var getOptions = new Dictionary<string, object>(){
+                { "url", $"queryResults?query={query}"},
+                { "client", client }
+            };
+
+
+            return results.Normalize(request.Get(getOptions));
         }
     }
 
@@ -291,28 +309,31 @@ namespace OSvCCSharp
 
     public class QueryResultsSet
     {
-        protected Client client;
-
-        public QueryResultsSet(Client clientVar) => client = clientVar ?? throw new ArgumentNullException(nameof(clientVar));
-
-        public Dictionary<string,string> QuerySet(List<Dictionary<string,string>> queries)
+        public Dictionary<string, string> QuerySet(Dictionary<string,object> options)
         {
-
+            var queries = (List<Dictionary<string, string>>)options["queries"];
+            Client client = (Client)options["client"];
             List<string> queryArr = new List<string>();
             List<string> keyMap = new List<string>();
 
-            foreach(Dictionary<string, string> query in queries)
+            foreach (Dictionary<string, string> query in queries)
             {
                 keyMap.Add(query["key"]);
                 queryArr.Add(query["query"]);
             }
 
             var queryResultsSet = new Dictionary<string, string>();
-            var querySearch = new QueryResults(client);
-
+            var querySearch = new QueryResults();
             string finalQueryString = String.Join("; ", queryArr);
-            string finalResults = querySearch.Query(finalQueryString);
-    
+            var querySetOptions = new Dictionary<string, object>()
+            {
+                { "client", client},
+                { "url", finalQueryString }
+            };
+
+            
+            string finalResults = querySearch.Query(querySetOptions);
+
             try
             {
                 var finalResultsToList = JsonConvert.DeserializeObject<List<List<Dictionary<string, string>>>>(finalResults);
@@ -341,31 +362,21 @@ namespace OSvCCSharp
 
     public class AnalyticsReportResults
     {
-        protected Client client;
-        public List<Dictionary<string,string>> filters;
-
-        public AnalyticsReportResults(Client clientVar) => client = clientVar ?? throw new ArgumentNullException(nameof(clientVar));
-
-        public string Run(int id = -1, string lookupName = "")
+        public string Run(Dictionary<string,object> options)
         {
-            var jsonData = new Dictionary<string, object>();
-            if (id!= -1) {
-                jsonData.Add("id", id);
-            }
-            else if(lookupName.Length > 0)
-            {
-                jsonData.Add("lookupName", lookupName);
-            }
-            
-            if(filters!=null && filters.Count > 0)
-            {
-                jsonData.Add("filters", filters);
-            }
-            
-
-            Connect request = new OSvCCSharp.Connect(client);
+            var jsonData = (Dictionary<string, object>)options["json"];
+            Connect request = new OSvCCSharp.Connect();
             var results = new NormalizeResults();
-            var reportRequest = Item.FromJson(request.Post("analyticsReportResults", jsonData));
+            var client = (Client)options["client"];
+
+            Dictionary<string, object> arrOptions = new Dictionary<string, object>()
+            {
+                {"url", "analyticsReportResults" },
+                {"json", jsonData },
+                { "client", client }
+            };
+
+            var reportRequest = Item.FromJson(request.Post(arrOptions));
             return JsonConvert.SerializeObject(results.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
         }
     }
@@ -374,15 +385,11 @@ namespace OSvCCSharp
     public static class Utils
     {
         public static string DateToIsoString(string dateString, string culture) {
-            IFormatProvider timeFormat = new System.Globalization.CultureInfo(culture, true);
+            // IFormatProvider timeFormat = new System.Globalization.CultureInfo(culture, true);
             DateTime dateTime = Convert.ToDateTime(dateString);
             return dateTime.ToString("s");
         }
 
-        public static Dictionary<string,object> Arrf()
-        {
-            return new Dictionary<string, object>();
-        }
     }
 
 }

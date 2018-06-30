@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>OSvCCSharp</id>
+    <version>0.1.0</version>
+    <title>OSvCCSharp</title>
+    <authors>rajangdavis</authors>
+    <owners>rajangdavis</owners>
+    <licenseUrl>https://raw.githubusercontent.com/rajangdavis/osvc_csharp/master/License.txt</licenseUrl>
+    <projectUrl>https://github.com/rajangdavis/osvc_csharp</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>An unofficial C# wrapper for Oracle Service Cloud (fka RightNow Technologies) REST API</description>
+    <releaseNotes>First Release</releaseNotes>
+    <copyright>Copyright 2018</copyright>
+    <tags>Oracle Service Cloud</tags>
+    <dependencies>
+      <dependency id="Newtonsoft.Json" version="11.0.2"></dependency>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="OSvCSharp.cs" target="content"></file>
+  </files>
+</package>
