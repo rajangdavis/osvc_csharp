@@ -131,51 +131,64 @@ namespace OSvCCSharp
 
         public static string Get( Dictionary<string, object> options)
         {
-            string url = (string)options["url"];
-            Client client = (Client)options["client"];
-            return WebRequestMethod(client, url);
-            
+            Dictionary<string, object> getOptions = new Dictionary<string, object>(options);
+            getOptions.Add("method", "GET");
+            return WebRequestMethod(getOptions);
+
         }
 
         public static string Post(Dictionary<string, object> options)
         {
-            string url = (string)options["url"];
-            Client client = (Client)options["client"];
-            Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
-            return WebRequestMethod(client, url, "POST", data: jsonData);
-
+            Dictionary<string, object> postOptions = new Dictionary<string, object>(options);
+            postOptions.Add("method", "POST");
+            return WebRequestMethod(postOptions);
         }
 
         public static string Patch(Dictionary<string, object> options)
         {
-            string url = (string)options["url"];
-            Client client = (Client)options["client"];
-            Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
-            var headers = new Dictionary<string, string>{
+            Dictionary<string, object> patchOptions = new Dictionary<string, object>(options);
+            patchOptions.Add("headers", new Dictionary<string, string>{
                 {"X-HTTP-Method-Override","PATCH"}
-            };
-            return WebRequestMethod(client, url, "POST", data: jsonData, headers: headers);
-
+            });
+            patchOptions.Add("method", "POST");
+            return WebRequestMethod(patchOptions);
         }
 
         public static string Delete(Dictionary<string, object> options)
         {
-            string url = (string)options["url"];
-            Client client = (Client)options["client"];
-            return WebRequestMethod(client, url, "DELETE");
-
+            Dictionary<string, object> deleteOptions = new Dictionary<string, object>(options);
+            deleteOptions.Add("method", "DELETE");
+            return WebRequestMethod(deleteOptions);
         }
 
         public static string Options(Dictionary<string, object> optionsDictionary)
         {
-            string url = (string)optionsDictionary["url"];
-            Client client = (Client)optionsDictionary["client"];
-            return WebRequestMethod(client, url, "OPTIONS");
-
+            Dictionary<string, object> optionsOptions = new Dictionary<string, object>(optionsDictionary);
+            optionsOptions.Add("method", "OPTIONS");
+            return WebRequestMethod(optionsOptions);
         }
 
-        private static string WebRequestMethod(Client client, string url = "", string method = "GET", object data = null, Dictionary<string, string> headers = null)
+        private static string WebRequestMethod(Dictionary<string,object> optionsForWebRequest)
         {
+            Client client = (Client)optionsForWebRequest["client"];
+            string url = (string)optionsForWebRequest["url"];
+            string method = (string)optionsForWebRequest["method"];
+
+            Dictionary<string, object> data = new Dictionary<string, object> { };
+
+            if (optionsForWebRequest.ContainsKey("json")){
+                data = (Dictionary<string, object>)optionsForWebRequest["json"];
+            }
+
+            Dictionary<string, string> headers = new Dictionary<string, string> { };
+
+            if (optionsForWebRequest.ContainsKey("headers"))
+            {
+                headers = (Dictionary<string, string>)optionsForWebRequest["headers"];
+            }
+           
+
+
             string resourceUrl = UrlFormat(url, client);
             WebRequest req = WebRequest.Create(resourceUrl);
             req.Method = method;
@@ -187,7 +200,7 @@ namespace OSvCCSharp
                 }
             }
 
-            if (data!=null)
+            if (method == "POST")
             {
                 var jsonDataConverted = JsonConvert.SerializeObject(data, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
                 ASCIIEncoding encoding = new ASCIIEncoding();
