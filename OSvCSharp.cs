@@ -108,7 +108,7 @@ namespace OSvCCSharp
     {
         internal Configuration config;
 
-        public Client(string username = "", string password = "", string interface_ = "", string version = "v1.3", string session ="", string oauth = "", string access_token = "", bool no_ssl_verify = false, bool suppress_rules = false, bool demo_site = false)
+        public Client(string interface_, string username = "", string password = "", string version = "v1.3", string session ="", string oauth = "", string access_token = "", bool no_ssl_verify = false, bool suppress_rules = false, bool demo_site = false)
         {
             Configuration configuration = new Configuration();
             configuration.SetUsername(username);
@@ -288,9 +288,6 @@ namespace OSvCCSharp
 
         public static string Query(Dictionary<string,object> options)
         {
-            Connect request = new OSvCCSharp.Connect();
-            var results = new NormalizeResults();
-
             string query = (string)options["query"];
 
             Client client = (Client)options["client"];
@@ -301,7 +298,7 @@ namespace OSvCCSharp
             };
 
 
-            return results.Normalize(request.Get(getOptions));
+            return NormalizeResults.Normalize(OSvCCSharp.Connect.Get(getOptions));
         }
     }
 
@@ -323,16 +320,15 @@ namespace OSvCCSharp
             }
 
             var queryResultsSet = new Dictionary<string, string>();
-            var querySearch = new QueryResults();
             string finalQueryString = String.Join("; ", queryArr);
             var querySetOptions = new Dictionary<string, object>
             {
                 { "client", client},
-                { "url", finalQueryString }
+                { "query", finalQueryString }
             };
 
             
-            string finalResults = querySearch.Query(querySetOptions);
+            string finalResults = OSvCCSharp.QueryResults.Query(querySetOptions);
 
             try
             {
@@ -365,8 +361,6 @@ namespace OSvCCSharp
         public static string Run(Dictionary<string,object> options)
         {
             var jsonData = (Dictionary<string, object>)options["json"];
-            Connect request = new OSvCCSharp.Connect();
-            var results = new NormalizeResults();
             var client = (Client)options["client"];
 
             Dictionary<string, object> arrOptions = new Dictionary<string, object>
@@ -376,8 +370,8 @@ namespace OSvCCSharp
                 { "client", client }
             };
 
-            var reportRequest = Item.FromJson(request.Post(arrOptions));
-            return JsonConvert.SerializeObject(results.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+            var reportRequest = Item.FromJson(OSvCCSharp.Connect.Post(arrOptions));
+            return JsonConvert.SerializeObject(NormalizeResults.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
         }
     }
 }
