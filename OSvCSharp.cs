@@ -186,11 +186,25 @@ namespace OSvCCSharp
             {
                 headers = (Dictionary<string, string>)optionsForWebRequest["headers"];
             }
-           
+            else
+            {
+                headers = new Dictionary<string, string> { };
+            }
 
+            headers = SuppressRulesCheck(headers, client);
+            headers = AccessTokenCheck(headers, client);
+            headers = OptionalHeadersCheck(headers, optionsForWebRequest);
 
             string resourceUrl = UrlFormat(url, client);
+            if(client.config.no_ssl_verify == true)
+            {
+                // Turns off SSL verification
+                // https://dejanstojanovic.net/aspnet/2014/september/bypass-ssl-certificate-validation/
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            }
+
             WebRequest req = WebRequest.Create(resourceUrl);
+
             req.Method = method;
             if (headers != null)
             {
@@ -209,7 +223,9 @@ namespace OSvCCSharp
                 newStream.Write(jsonData, 0, jsonDataConverted.Length);
                 newStream.Close();
             }
-            req.Credentials = new NetworkCredential(client.config.username, client.config.password);
+
+            req = SetAuthentication(req, client);
+
             try
             {
                 using (WebResponse res = req.GetResponse())
@@ -236,10 +252,78 @@ namespace OSvCCSharp
             }
         }
 
+        private static WebRequest SetAuthentication(WebRequest req,Client client)
+        {
+            if (client.config.username!="")
+            {
+                req.Credentials = new NetworkCredential(client.config.username, client.config.password);
+            }
+
+            if (client.config.session != "")
+            {
+                req.Headers.Add("Authorization",$"Session {client.config.session}");
+            }
+
+            if(client.config.oauth != "")
+            {
+                req.Headers.Add("Authorization",$"Bearer {client.config.oauth}");
+            }
+
+            return req;
+        }
+
         private static string UrlFormat(string resourceUrl, Client client)
         {
             string custOrDemo = client.config.demo_site == false ? "custhelp" : "rightnowdemo";
             return $"https://{client.config.interface_}.{custOrDemo}.com/services/rest/connect/{client.config.version}/{resourceUrl}";
+        }
+
+        private static Dictionary<string,string> SuppressRulesCheck(Dictionary<string,string> headers, Client client)
+        {
+            if(client.config.suppress_rules == true)
+            {
+                headers.Add("OSvC-CREST-Suppress-All", "true");
+            }
+            return headers;
+        }
+
+        private static Dictionary<string, string> AccessTokenCheck(Dictionary<string, string> headers, Client client)
+        {
+            if (client.config.access_token != "")
+            {
+                headers.Add("osvc-crest-api-access-token", client.config.access_token);
+            }
+            return headers;
+        }
+
+        private static Dictionary<string, string> OptionalHeadersCheck(Dictionary<string, string> headers, Dictionary<string, object> optionsToCheck)
+        {
+            if (optionsToCheck.ContainsKey("exclude_null") && (bool)optionsToCheck["exclude_null"] == true)
+            {
+                headers.Add("prefer", "exclude-null");
+            }
+
+            if (optionsToCheck.ContainsKey("next_request") && (int)optionsToCheck["next_request"] > 0)
+            {
+                headers.Add("osvc-crest-next-request-after", optionsToCheck["next_request"].ToString());
+            }
+
+            if (optionsToCheck.ContainsKey("schema") && (bool)optionsToCheck["schema"] == true)
+            {
+                headers.Add("Accept", "application/schema+json");
+            }
+
+            if (optionsToCheck.ContainsKey("utc_time") && (bool)optionsToCheck["utc_time"] == true)
+            {
+                headers.Add("OSvC-CREST-Time-UTC", "yes");
+            }
+
+            if (optionsToCheck.ContainsKey("annotation"))
+            {
+                // Check the annotation length
+                headers.Add("OSvC-CREST-Application-Context", (string)optionsToCheck["annotation"]);
+            }
+            return headers;
         }
 
     }
@@ -302,16 +386,9 @@ namespace OSvCCSharp
         public static string Query(Dictionary<string,object> options)
         {
             string query = (string)options["query"];
-
-            Client client = (Client)options["client"];
-
-            var getOptions = new Dictionary<string, object>{
-                { "url", $"queryResults?query={query}"},
-                { "client", client }
-            };
-
-
-            return NormalizeResults.Normalize(OSvCCSharp.Connect.Get(getOptions));
+            var queryOptions = new Dictionary<string, object>(options);
+            queryOptions.Add("url", $"queryResults?query={query}");
+            return NormalizeResults.Normalize(OSvCCSharp.Connect.Get(queryOptions));
         }
     }
 
@@ -322,7 +399,6 @@ namespace OSvCCSharp
         public static Dictionary<string, string> QuerySet(Dictionary<string,object> options)
         {
             var queries = (List<Dictionary<string, string>>)options["queries"];
-            Client client = (Client)options["client"];
             List<string> queryArr = new List<string>();
             List<string> keyMap = new List<string>();
 
@@ -334,13 +410,9 @@ namespace OSvCCSharp
 
             var queryResultsSet = new Dictionary<string, string>();
             string finalQueryString = String.Join("; ", queryArr);
-            var querySetOptions = new Dictionary<string, object>
-            {
-                { "client", client},
-                { "query", finalQueryString }
-            };
+            var querySetOptions = new Dictionary<string, object>(options);
+            querySetOptions.Add("query", finalQueryString);
 
-            
             string finalResults = OSvCCSharp.QueryResults.Query(querySetOptions);
 
             try
@@ -373,15 +445,10 @@ namespace OSvCCSharp
     {
         public static string Run(Dictionary<string,object> options)
         {
-            var jsonData = (Dictionary<string, object>)options["json"];
-            var client = (Client)options["client"];
+            
 
-            Dictionary<string, object> arrOptions = new Dictionary<string, object>
-            {
-                {"url", "analyticsReportResults" },
-                {"json", jsonData },
-                { "client", client }
-            };
+            Dictionary<string, object> arrOptions = new Dictionary<string, object>(options);
+            arrOptions.Add("url", "analyticsReportResults");
 
             var reportRequest = Item.FromJson(OSvCCSharp.Connect.Post(arrOptions));
             return JsonConvert.SerializeObject(NormalizeResults.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
