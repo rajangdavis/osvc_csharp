@@ -87,9 +87,9 @@ namespace OSvCCSharp
         public string session;
         public string oauth;
         public string version = "v1.3";
-        public bool no_ssl_verify = false;
-        public bool suppress_rules = false;
-        public bool demo_site = false;
+        public bool no_ssl_verify;
+        public bool suppress_rules;
+        public bool demo_site;
         public string access_token;
 
         public void SetUsername(string un) => username = un;
@@ -98,8 +98,8 @@ namespace OSvCCSharp
         public void SetVersion(string ver) => version = ver ?? "v1.3";
         public void SetSession(string sessionVar) => session = sessionVar;
         public void SetOAuth(string oauthVar) => oauth = oauthVar;
-        public void ChangeSSL(bool noSslVerify) => no_ssl_verify = noSslVerify;
-        public void SuppressRules(bool suppressRules) => suppress_rules= suppressRules;
+        public void ChangeSSL(bool noSslVerifyVar) => no_ssl_verify = noSslVerifyVar;
+        public void SuppressRules(bool suppressRulesVar) => suppress_rules= suppressRulesVar;
         public void IsDemo(bool demoSite) => demo_site = demoSite;
         public void SetAccessToken(string at) => access_token= at;
     }
@@ -126,15 +126,14 @@ namespace OSvCCSharp
 
     }
 
-    public partial class Connect
+    public class Connect
     {
-        // protected Client client;
 
         public string Get( Dictionary<string, object> options)
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
-            return WebRequestMethod(client, url, "GET");
+            return WebRequestMethod(client, url);
             
         }
 
@@ -168,10 +167,10 @@ namespace OSvCCSharp
 
         }
 
-        public string Options(Dictionary<string, object> options)
+        public string Options(Dictionary<string, object> optionsDictionary)
         {
-            string url = (string)options["url"];
-            Client client = (Client)options["client"];
+            string url = (string)optionsDictionary["url"];
+            Client client = (Client)optionsDictionary["client"];
             return WebRequestMethod(client, url, "OPTIONS");
 
         }
@@ -223,7 +222,7 @@ namespace OSvCCSharp
             }
         }
 
-        private string UrlFormat(string resourceUrl, Client client)
+        private static string UrlFormat(string resourceUrl, Client client)
         {
             string custOrDemo = client.config.demo_site == false ? "custhelp" : "rightnowdemo";
             return $"https://{client.config.interface_}.{custOrDemo}.com/services/rest/connect/{client.config.version}/{resourceUrl}";
@@ -286,7 +285,7 @@ namespace OSvCCSharp
     public class QueryResults
     {
 
-        public string Query(Dictionary<string,object> options)
+        public static string Query(Dictionary<string,object> options)
         {
             Connect request = new OSvCCSharp.Connect();
             var results = new NormalizeResults();
@@ -295,7 +294,7 @@ namespace OSvCCSharp
 
             Client client = (Client)options["client"];
 
-            var getOptions = new Dictionary<string, object>(){
+            var getOptions = new Dictionary<string, object>{
                 { "url", $"queryResults?query={query}"},
                 { "client", client }
             };
@@ -309,7 +308,7 @@ namespace OSvCCSharp
 
     public class QueryResultsSet
     {
-        public Dictionary<string, string> QuerySet(Dictionary<string,object> options)
+        public static Dictionary<string, string> QuerySet(Dictionary<string,object> options)
         {
             var queries = (List<Dictionary<string, string>>)options["queries"];
             Client client = (Client)options["client"];
@@ -325,7 +324,7 @@ namespace OSvCCSharp
             var queryResultsSet = new Dictionary<string, string>();
             var querySearch = new QueryResults();
             string finalQueryString = String.Join("; ", queryArr);
-            var querySetOptions = new Dictionary<string, object>()
+            var querySetOptions = new Dictionary<string, object>
             {
                 { "client", client},
                 { "url", finalQueryString }
@@ -362,14 +361,14 @@ namespace OSvCCSharp
 
     public class AnalyticsReportResults
     {
-        public string Run(Dictionary<string,object> options)
+        public static string Run(Dictionary<string,object> options)
         {
             var jsonData = (Dictionary<string, object>)options["json"];
             Connect request = new OSvCCSharp.Connect();
             var results = new NormalizeResults();
             var client = (Client)options["client"];
 
-            Dictionary<string, object> arrOptions = new Dictionary<string, object>()
+            Dictionary<string, object> arrOptions = new Dictionary<string, object>
             {
                 {"url", "analyticsReportResults" },
                 {"json", jsonData },
@@ -380,16 +379,4 @@ namespace OSvCCSharp
             return JsonConvert.SerializeObject(results.IterateThroughRows(reportRequest), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
         }
     }
-
-    // Utility functions
-    public static class Utils
-    {
-        public static string DateToIsoString(string dateString, string culture) {
-            // IFormatProvider timeFormat = new System.Globalization.CultureInfo(culture, true);
-            DateTime dateTime = Convert.ToDateTime(dateString);
-            return dateTime.ToString("s");
-        }
-
-    }
-
 }
