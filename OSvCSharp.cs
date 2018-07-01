@@ -232,7 +232,7 @@ namespace OSvCCSharp
     }
 
 
-    internal class NormalizeResults
+    static internal class NormalizeResults
     {
         public static string Normalize(string responseData)
         {
