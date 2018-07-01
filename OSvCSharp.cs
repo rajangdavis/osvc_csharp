@@ -126,10 +126,10 @@ namespace OSvCCSharp
 
     }
 
-    public class Connect
+    public static class Connect
     {
 
-        public string Get( Dictionary<string, object> options)
+        public static string Get( Dictionary<string, object> options)
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
@@ -137,7 +137,7 @@ namespace OSvCCSharp
             
         }
 
-        public string Post(Dictionary<string, object> options)
+        public static string Post(Dictionary<string, object> options)
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
@@ -146,7 +146,7 @@ namespace OSvCCSharp
 
         }
 
-        public string Patch(Dictionary<string, object> options)
+        public static string Patch(Dictionary<string, object> options)
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
@@ -158,7 +158,7 @@ namespace OSvCCSharp
 
         }
 
-        public string Delete(Dictionary<string, object> options)
+        public static string Delete(Dictionary<string, object> options)
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
@@ -166,7 +166,7 @@ namespace OSvCCSharp
 
         }
 
-        public string Options(Dictionary<string, object> optionsDictionary)
+        public static string Options(Dictionary<string, object> optionsDictionary)
         {
             string url = (string)optionsDictionary["url"];
             Client client = (Client)optionsDictionary["client"];
@@ -234,7 +234,7 @@ namespace OSvCCSharp
 
     internal class NormalizeResults
     {
-        public string Normalize(string responseData)
+        public static string Normalize(string responseData)
         {
             var error = JsonError.FromJson(responseData);
             var data = JsonResponse.FromJson(responseData);
