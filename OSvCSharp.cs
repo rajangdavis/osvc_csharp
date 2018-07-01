@@ -141,7 +141,6 @@ namespace OSvCCSharp
         {
             string url = (string)options["url"];
             Client client = (Client)options["client"];
-            string resourceUrl = UrlFormat(url, client);
             Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
             return WebRequestMethod(client, url, "POST", data: jsonData);
 
@@ -152,7 +151,7 @@ namespace OSvCCSharp
             string url = (string)options["url"];
             Client client = (Client)options["client"];
             Dictionary<string, object> jsonData = (Dictionary<string, object>)options["json"];
-            var headers = new Dictionary<string, string>() {
+            var headers = new Dictionary<string, string>{
                 {"X-HTTP-Method-Override","PATCH"}
             };
             return WebRequestMethod(client, url, "POST", data: jsonData, headers: headers);
@@ -175,16 +174,18 @@ namespace OSvCCSharp
 
         }
 
-        private string WebRequestMethod(Client client, string url = "", string method = "GET", object data = null, Dictionary<string, string> headers = null)
+        private static string WebRequestMethod(Client client, string url = "", string method = "GET", object data = null, Dictionary<string, string> headers = null)
         {
             string resourceUrl = UrlFormat(url, client);
             WebRequest req = WebRequest.Create(resourceUrl);
             req.Method = method;
-            if(headers != null)
+            if (headers != null)
+            {
                 foreach (KeyValuePair<string, string> header in headers)
                 {
                     req.Headers.Add(header.Key, header.Value);
                 }
+            }
 
             if (data!=null)
             {
@@ -258,7 +259,7 @@ namespace OSvCCSharp
             }
         }
 
-        public List<Dictionary<string,string>> IterateThroughRows(Item item)
+        public static List<Dictionary<string,string>> IterateThroughRows(Item item)
         {
 
             var finalHash = new List<Dictionary<string, string>>();
@@ -282,7 +283,7 @@ namespace OSvCCSharp
 
     }
 
-    public class QueryResults
+    public static class QueryResults
     {
 
         public static string Query(Dictionary<string,object> options)
@@ -306,7 +307,7 @@ namespace OSvCCSharp
 
 
 
-    public class QueryResultsSet
+    public static class QueryResultsSet
     {
         public static Dictionary<string, string> QuerySet(Dictionary<string,object> options)
         {
@@ -359,7 +360,7 @@ namespace OSvCCSharp
     }
 
 
-    public class AnalyticsReportResults
+    public static class AnalyticsReportResults
     {
         public static string Run(Dictionary<string,object> options)
         {
