@@ -1,5 +1,7 @@
 # OSvCCSharp
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/9921a01e055640d2bb2ece19c95986ea)](https://app.codacy.com/app/rajangdavis/osvc_csharp?utm_source=github.com&utm_medium=referral&utm_content=rajangdavis/osvc_csharp&utm_campaign=badger)
+
 # API CHANGE IN PROGRESS; WILL UPDATE OVER THE 6/30/18 WEEKEND
 
 An (under development) C# library for using the [Oracle Service Cloud REST API](https://docs.oracle.com/cloud/latest/servicecs_gs/CXSVC/) influenced by the [ConnectPHP API](http://documentation.custhelp.com/euf/assets/devdocs/november2016/Connect_PHP/Default.htm)
