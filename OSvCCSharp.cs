@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 
 namespace OSvCCSharp
 {
@@ -46,7 +47,6 @@ namespace OSvCCSharp
         public string Type { get; set; }
     }
 
-
     internal partial class JsonError
     {
         internal static JsonError FromJson(string json) => JsonConvert.DeserializeObject<JsonError>(json, Converter.Settings);
@@ -77,7 +77,6 @@ namespace OSvCCSharp
         internal static JsonSerializerSettings Settings => settings;
     }
     // END JSON Response
-
 
     internal class Configuration
     {
@@ -129,12 +128,37 @@ namespace OSvCCSharp
     public static class Connect
     {
 
+        private static string DownloadFileCheck(Dictionary<string, object> downloadOptions)
+        {
+            string url = (string)downloadOptions["url"];
+
+            if (url.IndexOf("?download") > -1)
+            {
+                Dictionary<string, object> optionsCopy = new Dictionary<string, object>(downloadOptions);
+                Client rnClient = (Client)optionsCopy["client"];
+                string downloadUrl = UrlFormat((string)optionsCopy["url"], rnClient);
+                optionsCopy["url"] = url.Replace("?download", "");
+                string fileData = WebRequestMethod(optionsCopy);
+                JToken token = JObject.Parse(fileData);
+                string fileName = (string)token.SelectToken("fileName");
+                if (String.IsNullOrEmpty(fileName))
+                {
+                    fileName = "downloadedAttachment.tgz";
+                }
+                downloadOptions.Add("downloadFileName", fileName);
+                return WebRequestMethod(downloadOptions);
+            }
+            else
+            {
+                return WebRequestMethod(downloadOptions);
+            }
+        }
+
         public static string Get(Dictionary<string, object> options)
         {
             Dictionary<string, object> getOptions = new Dictionary<string, object>(options);
             getOptions.Add("method", "GET");
-            return WebRequestMethod(getOptions);
-
+            return DownloadFileCheck(getOptions);
         }
 
         public static string Post(Dictionary<string, object> options)
@@ -193,10 +217,6 @@ namespace OSvCCSharp
                 headers = new Dictionary<string, string> { };
             }
 
-            headers = SuppressRulesCheck(headers, client);
-            headers = AccessTokenCheck(headers, client);
-            headers = OptionalHeadersCheck(headers, optionsForWebRequest);
-
             if (client.config.no_ssl_verify == true)
             {
                 // Turns off SSL verification
@@ -220,6 +240,7 @@ namespace OSvCCSharp
 
             if (method == "POST")
             {
+                data = UploadFileCheck(data, optionsForWebRequest);
                 var jsonDataConverted = JsonConvert.SerializeObject(data, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
                 ASCIIEncoding encoding = new ASCIIEncoding();
                 byte[] jsonData = encoding.GetBytes(jsonDataConverted);
@@ -230,10 +251,35 @@ namespace OSvCCSharp
 
             try
             {
-                using (WebResponse res = req.GetResponse() as HttpWebResponse)
+
+                if (optionsForWebRequest.ContainsKey("downloadFileName"))
                 {
-                    StreamReader rd = new StreamReader(res.GetResponseStream(), Encoding.UTF8);
-                    return rd.ReadToEnd();
+
+                    using (WebResponse res = req.GetResponse() as HttpWebResponse)
+                    {
+                        string fileName = (string)optionsForWebRequest["downloadFileName"];
+                        Stream httpResponseStream = res.GetResponseStream();
+
+                        int bufferSize = 1024;
+                        byte[] buffer = new byte[bufferSize];
+                        int bytesRead = 0;
+
+                        // Read from response and write to file
+                        FileStream fileStream = File.Create(fileName);
+                        while ((bytesRead = httpResponseStream.Read(buffer, 0, bufferSize)) != 0)
+                        {
+                            fileStream.Write(buffer, 0, bytesRead);
+                        }
+                        return $"Downloaded {fileName}";
+                    }
+                }
+                else
+                {
+                    using (WebResponse res = req.GetResponse() as HttpWebResponse)
+                    {
+                        StreamReader rd = new StreamReader(res.GetResponseStream(), Encoding.UTF8);
+                        return rd.ReadToEnd();
+                    }
                 }
             }
             catch (WebException e)
@@ -263,6 +309,29 @@ namespace OSvCCSharp
             }
         }
 
+        private static Dictionary<string,object> UploadFileCheck(Dictionary<string, object> data, Dictionary<string, object> options)
+        {
+            if (options.ContainsKey("files"))
+            {
+                var filesToUpload = (List<string>)options["files"];
+                var fileAttachmentList = new List<Dictionary<string, object>>();
+
+                foreach (var file in filesToUpload)
+                {
+                    Dictionary<string, object> fileHash = new Dictionary<string, object> { };
+                    string fileName = Path.GetFileName(file);
+                    Byte[] bytes = File.ReadAllBytes(file);
+                    String fileData = Convert.ToBase64String(bytes);
+                    fileHash.Add("fileName", fileName);
+                    fileHash.Add("data", fileData);
+                    fileAttachmentList.Add(fileHash);
+                }
+
+                data.Add("fileAttachments", fileAttachmentList);
+            }
+            return data;
+        }
+
         private static HttpWebRequest JsonSchemaCheck(Dictionary<string, object> options)
         {
             Client client = (Client)options["client"];
@@ -270,7 +339,6 @@ namespace OSvCCSharp
             string resourceUrl = UrlFormat(url, client);
             var httpReq = (HttpWebRequest)WebRequest.Create(resourceUrl);
             httpReq = SetAuthentication(httpReq, client);
-
             if (options.ContainsKey("schema") && (bool)options["schema"] == true)
             {
                 httpReq.Accept = "application/schema+json";
@@ -331,6 +399,13 @@ namespace OSvCCSharp
 
         private static Dictionary<string, string> OptionalHeadersCheck(Dictionary<string, string> headers, Dictionary<string, object> optionsToCheck)
         {
+
+            Client rnClient = (Client)optionsToCheck["client"];
+
+            headers = SuppressRulesCheck(headers, rnClient);
+            headers = AccessTokenCheck(headers, rnClient);
+            headers = OptionalHeadersCheck(headers, optionsToCheck);
+
             if (optionsToCheck.ContainsKey("exclude_null") && (bool)optionsToCheck["exclude_null"] == true)
             {
                 headers.Add("prefer", "exclude-null");
@@ -355,7 +430,6 @@ namespace OSvCCSharp
         }
 
     }
-
 
     static internal class NormalizeResults
     {
@@ -421,8 +495,6 @@ namespace OSvCCSharp
         }
     }
 
-
-
     public static class QueryResultsSet
     {
         public static Dictionary<string, string> QuerySet(Dictionary<string, object> options)
@@ -469,13 +541,10 @@ namespace OSvCCSharp
 
     }
 
-
     public static class AnalyticsReportResults
     {
         public static string Run(Dictionary<string, object> options)
         {
-
-
             Dictionary<string, object> arrOptions = new Dictionary<string, object>(options);
             arrOptions.Add("url", "analyticsReportResults");
 
