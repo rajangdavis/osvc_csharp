@@ -132,11 +132,10 @@ namespace OSvCCSharp
         {
             string url = (string)downloadOptions["url"];
 
-            if (url.IndexOf("?download") > -1)
+            if (url.IndexOf("?download", StringComparison.CurrentCulture) > -1)
             {
                 Dictionary<string, object> optionsCopy = new Dictionary<string, object>(downloadOptions);
                 Client rnClient = (Client)optionsCopy["client"];
-                string downloadUrl = UrlFormat((string)optionsCopy["url"], rnClient);
                 optionsCopy["url"] = url.Replace("?download", "");
                 string fileData = WebRequestMethod(optionsCopy);
                 JToken token = JObject.Parse(fileData);
@@ -270,6 +269,9 @@ namespace OSvCCSharp
                         {
                             fileStream.Write(buffer, 0, bytesRead);
                         }
+
+                        fileStream.Dispose();
+
                         return $"Downloaded {fileName}";
                     }
                 }
@@ -402,31 +404,30 @@ namespace OSvCCSharp
 
             Client rnClient = (Client)optionsToCheck["client"];
 
-            headers = SuppressRulesCheck(headers, rnClient);
-            headers = AccessTokenCheck(headers, rnClient);
-            headers = OptionalHeadersCheck(headers, optionsToCheck);
+            headersWithSuppression = SuppressRulesCheck(headers, rnClient);
+            headersWithAccessToken = AccessTokenCheck(headersWithSuppression, rnClient);
 
             if (optionsToCheck.ContainsKey("exclude_null") && (bool)optionsToCheck["exclude_null"] == true)
             {
-                headers.Add("prefer", "exclude-null");
+                headersWithAccessToken.Add("prefer", "exclude-null");
             }
 
             if (optionsToCheck.ContainsKey("next_request") && (int)optionsToCheck["next_request"] > 0)
             {
-                headers.Add("osvc-crest-next-request-after", optionsToCheck["next_request"].ToString());
+                headersWithAccessToken.Add("osvc-crest-next-request-after", optionsToCheck["next_request"].ToString());
             }
 
             if (optionsToCheck.ContainsKey("utc_time") && (bool)optionsToCheck["utc_time"] == true)
             {
-                headers.Add("OSvC-CREST-Time-UTC", "yes");
+                headersWithAccessToken.Add("OSvC-CREST-Time-UTC", "yes");
             }
 
             if (optionsToCheck.ContainsKey("annotation"))
             {
                 // Check the annotation length
-                headers.Add("OSvC-CREST-Application-Context", (string)optionsToCheck["annotation"]);
+                headersWithAccessToken.Add("OSvC-CREST-Application-Context", (string)optionsToCheck["annotation"]);
             }
-            return headers;
+            return headersWithAccessToken;
         }
 
     }
