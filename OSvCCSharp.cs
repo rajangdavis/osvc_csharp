@@ -135,7 +135,6 @@ namespace OSvCCSharp
             if (url.IndexOf("?download", StringComparison.CurrentCulture) > -1)
             {
                 Dictionary<string, object> optionsCopy = new Dictionary<string, object>(downloadOptions);
-                Client rnClient = (Client)optionsCopy["client"];
                 optionsCopy["url"] = url.Replace("?download", "");
                 string fileData = WebRequestMethod(optionsCopy);
                 JToken token = JObject.Parse(fileData);
@@ -209,7 +208,9 @@ namespace OSvCCSharp
 
             if (optionsForWebRequest.ContainsKey("headers"))
             {
-                headers = (Dictionary<string, string>)optionsForWebRequest["headers"];
+                clientHeaders = (Dictionary<string, string>)optionsForWebRequest["headers"];
+                headers = OptionalHeadersCheck(headers, optionsForWebRequest);
+
             }
             else
             {
