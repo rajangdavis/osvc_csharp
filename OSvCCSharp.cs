@@ -208,13 +208,12 @@ namespace OSvCCSharp
 
             if (optionsForWebRequest.ContainsKey("headers"))
             {
-                clientHeaders = (Dictionary<string, string>)optionsForWebRequest["headers"];
-                headers = OptionalHeadersCheck(headers, optionsForWebRequest);
-
+                var clientHeaders = (Dictionary<string, string>)optionsForWebRequest["headers"];
+                headers = OptionalHeadersCheck(clientHeaders, optionsForWebRequest);
             }
             else
             {
-                headers = new Dictionary<string, string> { };
+                headers = OptionalHeadersCheck(headers, optionsForWebRequest);
             }
 
             if (client.config.no_ssl_verify == true)
@@ -318,19 +317,31 @@ namespace OSvCCSharp
             {
                 var filesToUpload = (List<string>)options["files"];
                 var fileAttachmentList = new List<Dictionary<string, object>>();
+                bool noFileError = false;
 
                 foreach (var file in filesToUpload)
                 {
-                    Dictionary<string, object> fileHash = new Dictionary<string, object> { };
-                    string fileName = Path.GetFileName(file);
-                    Byte[] bytes = File.ReadAllBytes(file);
-                    String fileData = Convert.ToBase64String(bytes);
-                    fileHash.Add("fileName", fileName);
-                    fileHash.Add("data", fileData);
-                    fileAttachmentList.Add(fileHash);
+                    try
+                    {
+                        Dictionary<string, object> fileHash = new Dictionary<string, object> { };
+                        string fileName = Path.GetFileName(file);
+                        Byte[] bytes = File.ReadAllBytes(file);
+                        String fileData = Convert.ToBase64String(bytes);
+                        fileHash.Add("fileName", fileName);
+                        fileHash.Add("data", fileData);
+                        fileAttachmentList.Add(fileHash);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"There was an error with uploading file from '{file}'");
+                        noFileError = true;
+                    }
                 }
 
-                data.Add("fileAttachments", fileAttachmentList);
+                if (noFileError == false)
+                {
+                    data.Add("fileAttachments", fileAttachmentList);
+                }
             }
             return data;
         }
@@ -405,8 +416,8 @@ namespace OSvCCSharp
 
             Client rnClient = (Client)optionsToCheck["client"];
 
-            headersWithSuppression = SuppressRulesCheck(headers, rnClient);
-            headersWithAccessToken = AccessTokenCheck(headersWithSuppression, rnClient);
+            var headersWithSuppression = SuppressRulesCheck(headers, rnClient);
+            var headersWithAccessToken = AccessTokenCheck(headersWithSuppression, rnClient);
 
             if (optionsToCheck.ContainsKey("exclude_null") && (bool)optionsToCheck["exclude_null"] == true)
             {
@@ -439,6 +450,7 @@ namespace OSvCCSharp
         {
             var error = JsonError.FromJson(responseData);
             var data = JsonResponse.FromJson(responseData);
+
             var finalList = new List<List<Dictionary<string, string>>>();
             if (data != null && data.Items != null)
             {
@@ -448,7 +460,15 @@ namespace OSvCCSharp
                     finalList.Add(resultArray);
                 }
 
-                return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                // 
+                if (finalList.Count == 1)
+                {
+                    return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                }
+                else
+                {
+                    return JsonConvert.SerializeObject(finalList, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                }
 
             }
             else if (data != null && data.Items == null)
@@ -512,8 +532,24 @@ namespace OSvCCSharp
             }
 
             var queryResultsSet = new Dictionary<string, string>();
-            string finalQueryString = String.Join("; ", queryArr);
             var querySetOptions = new Dictionary<string, object>(options);
+
+            //if (options.ContainsKey("parallel") && (bool)options["parallel"] == true)
+            //{
+
+            //    foreach (var query in queryArr)
+            //    {
+            //        querySetOptions.Add("query", query);
+            //        queryResultsSet.Add("key", OSvCCSharp.QueryResults.Query(querySetOptions));
+            //    }
+
+            //    return queryResultsSet;
+            //}
+
+
+            
+            string finalQueryString = String.Join("; ", queryArr);
+
             querySetOptions.Add("query", finalQueryString);
 
             string finalResults = OSvCCSharp.QueryResults.Query(querySetOptions);

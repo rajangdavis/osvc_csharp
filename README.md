@@ -2,43 +2,48 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/9921a01e055640d2bb2ece19c95986ea)](https://app.codacy.com/app/rajangdavis/osvc_csharp?utm_source=github.com&utm_medium=referral&utm_content=rajangdavis/osvc_csharp&utm_campaign=badger)
 
-# API CHANGE IN PROGRESS; WILL UPDATE OVER THE 6/30/18 WEEKEND
-
 An (under development) C# library for using the [Oracle Service Cloud REST API](https://docs.oracle.com/cloud/latest/servicecs_gs/CXSVC/) influenced by the [ConnectPHP API](http://documentation.custhelp.com/euf/assets/devdocs/november2016/Connect_PHP/Default.htm)
 
 ## Todo
 I am looking to implement the following items soon:
 1. Test suite
 2. Documentation
-3. Nuget Package
 
 ## Compatibility
 
-The library is being tested against Oracle Service Cloud May 2017 using C# v4.0.30319.
+The library is being tested against Oracle Service Cloud 18A using C# v4.0.30319.
 
 All of the HTTP methods should work on any version of Oracle Service Cloud since version May 2015; however, there maybe some issues with querying items on any version before May 2016. This is because ROQL queries were not exposed via the REST API until May 2016.
 
 
-## Use Cases
-You can use this C# Library for basic scripting and microservices.
+## Basic Usage
+The features that work to date are as follows:
 
-The main features that work to date are as follows:
+1. [HTTP Methods](#http-methods)
+    1. For creating objects and [uploading one or more file attachments](#uploading-file-attachments), make a [POST request with the OSvCNode.Connect Object](#post)
+    2. For reading objects and [downloading one or more file attachments](#downloading-file-attachments), make a [GET request with the OSvCNode.Connect Object](#get)
+    3. For updating objects, make a [PATCH request with the OSvCNode.Connect Object](#patch)
+    4. For deleting objects, make a [DELETE request with the OSvCNode.Connect Object](#delete)
+    5. For looking up options for a given URL, make an [OPTIONS request with the OSvCNode.Connect Object](#options)
+2. Running ROQL queries [either 1 at a time](#osvcnodequeryresults-example) or [multiple queries in a set](#osvcnodequeryresultsset-example)
+3. [Running Reports](#osvcnodeanalyticsreportsresults)
+4. [Optional Settings](#optional-settings)
 
-1. [Simple configuration](#client-configuration)
-2. Running ROQL queries [either 1 at a time](#osvccsharpqueryresults-example) or [multiple queries in a set](#osvccsharpqueryresultsset-example)
-3. [Running Reports with filters](#osvccsharpanalyticsreportsresults)
-4. Basic CRUD Operations via HTTP Methods
-	1. [Create => Post](#create)
-	2. [Read => Get](#read)
-	3. [Update => Patch](#update)
-	4. [Destroy => Delete](#delete)
+Here are the _spicier_ (more advanced) features:
 
-<!-- ## Installing C# and the .NET runtime (for Windows)
+1. [Bulk Delete](#bulk-delete)
+2. [Running multiple ROQL Queries in parallel](#running-multiple-roql-queries-in-parallel)
+3. [Performing Session Authentication](#performing-session-authentication)
 
+## Installing C# and the .NET runtime (for Windows)
+[Try this link.](https://www.microsoft.com/net/download/dotnet-framework-runtime)
 
-## Installation -->
+## Installation
+Install with [nuget](https://www.nuget.org/packages/OSvCCSharp/) or use the dotnet commandline:
 
-## Client Configuration
+    $ dotnet add package OSvCCSharp
+
+## Authentication
 
 An OSvCCSharp.Client class lets the library know which credentials and interface to use for interacting with the Oracle Service Cloud REST API.
 This is helpful if you need to interact with multiple interfaces or set different headers for different objects.
@@ -46,20 +51,78 @@ This is helpful if you need to interact with multiple interfaces or set differen
 ```C#
 
 // Configuration is as simple as requiring the package
-// and passing in an object
+// and passing in values to create an OSvCCSharp.Client
 
-// Client Configuration
-var rnClient = new OSvCCSharp.Client(
-    username: AppSettings["OSC_ADMIN"],
-    password: AppSettings["OSC_PASSWORD"],
-    interfaceName: AppSettings["OSC_SITE"],
+using static System.Console;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using static OSvCCSharp.Utils;
+using static System.Configuration.ConfigurationManager;
 
-    // Optional Configuration Settings
-    demo_site: false, 				// Changes domain from 'custhelp' to 'rightnowdemo'
-    version: "v1.4", 				// Changes REST API version, default is 'v1.3'
-    ssl_verify: false, 				// Turns off SSL verification
-    rule_suppression: false                     // Supresses Business Rules
-);
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+        // Client Configuration
+        var rnClient = new OSvCCSharp.Client(
+            
+            // Interface to connect with 
+            interface_: AppSettings["OSC_SITE"],
+            
+            // Basic Authentication
+            username: AppSettings["OSC_ADMIN"],
+            password: AppSettings["OSC_PASSWORD"],
+
+            // Session Authentication
+            // session: <session_token>,
+            
+            // OAuth Token Authentication
+            // oauth: <oauth_token>,
+
+            // Optional Configuration Settings
+            demo_site: false,                   // Changes domain from 'custhelp' to 'rightnowdemo'
+            version: "v1.4",                    // Changes REST API version, default is 'v1.3'
+            no_ssl_verify: true,                // Turns off SSL verification
+            suppress_rules: true,               // Supresses Business Rules
+            access_token: "My access token"     // Adds an access token to ensure quality of service
+        );
+
+        // You will then create an options Dictionary that
+        // you will pass the rnClient object to 
+
+        // You may add optional settings
+        // to modify certain aspects of
+        // the HTTP request that you are making
+
+        var options = new Dictionary&lt;string, object>
+        {
+            // set the client for the request
+            { "client" , rnClient },
+
+            // Adds a custom header that adds an annotation (CCOM version must be set to "v1.4" or "latest"); limited to 40 characters
+            { "annotation", "Custom annotation" },
+
+            // Prints request headers for debugging  
+            { "debug", true },
+
+            // Adds a custom header to excludes null from results; for use with GET requests only                    
+            { "exclude_null", true },
+
+            // Number of milliseconds before another HTTP request can be made; this is an anti-DDoS measure
+            { "next_request", 500 },
+
+            // Sets 'Accept' header to 'application/schema+json'
+            { "schema", true },
+
+            // Adds a custom header to return results using Coordinated Universal Time (UTC) format for time (Supported on November 2016+
+            { "utc_time", true }
+        };
+    }
+}
 
 
 ```
