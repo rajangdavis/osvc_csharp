@@ -7,6 +7,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 
 namespace OSvCCSharp
 {
@@ -317,8 +318,6 @@ namespace OSvCCSharp
             {
                 var filesToUpload = (List<string>)options["files"];
                 var fileAttachmentList = new List<Dictionary<string, object>>();
-                bool noFileError = false;
-
                 foreach (var file in filesToUpload)
                 {
                     try
@@ -333,15 +332,12 @@ namespace OSvCCSharp
                     }
                     catch
                     {
-                        Console.WriteLine($"There was an error with uploading file from '{file}'");
-                        noFileError = true;
+                        // Ignore the error, push it to the network to return a 400 error
+                        // As much as I hate this, it's hard to do this without raising an
+                        // an exception which will halt the program
                     }
                 }
-
-                if (noFileError == false)
-                {
-                    data.Add("fileAttachments", fileAttachmentList);
-                }
+                data.Add("fileAttachments", fileAttachmentList);
             }
             return data;
         }
@@ -459,8 +455,6 @@ namespace OSvCCSharp
                     List<Dictionary<string, string>> resultArray = IterateThroughRows(item);
                     finalList.Add(resultArray);
                 }
-
-                // 
                 if (finalList.Count == 1)
                 {
                     return JsonConvert.SerializeObject(finalList.SelectMany(x => x), Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
@@ -471,13 +465,17 @@ namespace OSvCCSharp
                 }
 
             }
-            else if (data != null && data.Items == null)
+            else if (data != null && data.Items == null && error.Status == 0)
             {
                 return JsonConvert.SerializeObject(data, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
             }
-            else
+            else if(error != null)
             {
                 return JsonConvert.SerializeObject(error, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+            }
+            else
+            {
+                return JsonConvert.SerializeObject(data, Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
             }
         }
 
@@ -533,33 +531,60 @@ namespace OSvCCSharp
 
             var queryResultsSet = new Dictionary<string, string>();
             var querySetOptions = new Dictionary<string, object>(options);
+            string finalQueryString = "";
+            string finalResults = "";
+            var finalResultsList = new List<string> { };
 
-            //if (options.ContainsKey("parallel") && (bool)options["parallel"] == true)
-            //{
+            if (options.ContainsKey("parallel") && (bool)options["parallel"] == true)
+            {
+                var taskList = new List<Task<String>> { };
+                foreach (var query in queryArr)
+                {
+                    var optionsCopy = new Dictionary<string, object>(options);
+                    optionsCopy["query"] = query;
+                    var thisTask = Task.Factory.StartNew(() => OSvCCSharp.QueryResults.Query(optionsCopy));
+                    taskList.Add(thisTask);
+                }
 
-            //    foreach (var query in queryArr)
-            //    {
-            //        querySetOptions.Add("query", query);
-            //        queryResultsSet.Add("key", OSvCCSharp.QueryResults.Query(querySetOptions));
-            //    }
+                var completedTasks = Task.WhenAll(taskList.ToArray());
 
-            //    return queryResultsSet;
-            //}
+                completedTasks.Wait();
+                if (completedTasks.Status == TaskStatus.RanToCompletion)
+                {
+                    foreach (string result in completedTasks.Result)
+                    {
+                        finalResultsList.Add(result);
+                    }
+                }
+            }
+            else
+            {
+                finalQueryString = String.Join("; ", queryArr);
 
+                querySetOptions.Add("query", finalQueryString);
 
-            
-            string finalQueryString = String.Join("; ", queryArr);
-
-            querySetOptions.Add("query", finalQueryString);
-
-            string finalResults = OSvCCSharp.QueryResults.Query(querySetOptions);
+                finalResults = OSvCCSharp.QueryResults.Query(querySetOptions);
+            }
 
             try
             {
-                var finalResultsToList = JsonConvert.DeserializeObject<List<List<Dictionary<string, string>>>>(finalResults);
-                for (int i = 0; i < keyMap.Count; i++)
+
+                var finalResultsToList = new List<List<Dictionary<string, string>>> { };
+
+                if (finalResultsList.Count > 0)
                 {
-                    queryResultsSet[keyMap[i]] = JsonConvert.SerializeObject(finalResultsToList[i], Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                    for (int i = 0; i < keyMap.Count; i++)
+                    {
+                        queryResultsSet[keyMap[i]] = finalResultsList[i];
+                    }
+                }
+                else
+                {
+                    finalResultsToList = JsonConvert.DeserializeObject<List<List<Dictionary<string, string>>>>(finalResults);
+                    for (int i = 0; i < keyMap.Count; i++)
+                    {
+                        queryResultsSet[keyMap[i]] = JsonConvert.SerializeObject(finalResultsToList[i], Formatting.Indented, new JsonConverter[] { new StringEnumConverter() });
+                    }
                 }
 
                 return queryResultsSet;
