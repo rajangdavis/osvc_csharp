@@ -15,16 +15,15 @@ The library is being tested against Oracle Service Cloud 18A using C# v4.0.30319
 
 All of the HTTP methods should work on any version of Oracle Service Cloud since version May 2015; however, there maybe some issues with querying items on any version before May 2016. This is because ROQL queries were not exposed via the REST API until May 2016.
 
-
 ## Basic Usage
 The features that work to date are as follows:
 
 1. [HTTP Methods](#http-methods)
-    1. For creating objects and [uploading one or more file attachments](#uploading-file-attachments), make a [POST request with the OSvCNode.Connect Object](#post)
-    2. For reading objects and [downloading one or more file attachments](#downloading-file-attachments), make a [GET request with the OSvCNode.Connect Object](#get)
-    3. For updating objects, make a [PATCH request with the OSvCNode.Connect Object](#patch)
-    4. For deleting objects, make a [DELETE request with the OSvCNode.Connect Object](#delete)
-    5. For looking up options for a given URL, make an [OPTIONS request with the OSvCNode.Connect Object](#options)
+    1. For creating objects and [uploading one or more file attachments](#uploading-file-attachments), make a [POST request with the OSvCCSharp.Connect Object](#post)
+    2. For reading objects and [downloading one or more file attachments](#downloading-file-attachments), make a [GET request with the OSvCCSharp.Connect Object](#get)
+    3. For updating objects, make a [PATCH request with the OSvCCSharp.Connect Object](#patch)
+    4. For deleting objects, make a [DELETE request with the OSvCCSharp.Connect Object](#delete)
+    5. For looking up options for a given URL, make an [OPTIONS request with the OSvCCSharp.Connect Object](#options)
 2. Running ROQL queries [either 1 at a time](#osvcnodequeryresults-example) or [multiple queries in a set](#osvcnodequeryresultsset-example)
 3. [Running Reports](#osvcnodeanalyticsreportsresults)
 4. [Optional Settings](#optional-settings)
@@ -52,12 +51,7 @@ This is helpful if you need to interact with multiple interfaces or set differen
 
 // Configuration is as simple as requiring the package
 // and passing in values to create an OSvCCSharp.Client
-
-using static System.Console;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using static OSvCCSharp.Utils;
+using OSvCCSharp;
 using static System.Configuration.ConfigurationManager;
 
 namespace ConsoleApp
@@ -84,11 +78,37 @@ namespace ConsoleApp
             // oauth: <oauth_token>,
 
             // Optional Configuration Settings
-            demo_site: false,                   // Changes domain from 'custhelp' to 'rightnowdemo'
+            demo_site: true,                   // Changes domain from 'custhelp' to 'rightnowdemo'
             version: "v1.4",                    // Changes REST API version, default is 'v1.3'
             no_ssl_verify: true,                // Turns off SSL verification
-            suppress_rules: true,               // Supresses Business Rules
+            suppress_rules: true,               // Suppresses Business Rules
             access_token: "My access token"     // Adds an access token to ensure quality of service
+        );
+    }
+}
+
+
+```
+## Optional Settings
+
+In addition to a client to specify which credentials, interface, and CCOM version to use, you will need to create an options object to pass in the client as well as specify any additional parameters that you may wish to use.
+
+Here is an example using the client object created in the previous section:
+```C#
+using OSvCCSharp;
+using static System.Configuration.ConfigurationManager;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+        var rnClient = new OSvCCSharp.Client(
+            interface_: AppSettings["OSC_SITE"],
+            username: AppSettings["OSC_ADMIN"],
+            password: AppSettings["OSC_PASSWORD"],
         );
 
         // You will then create an options Dictionary that
@@ -98,16 +118,13 @@ namespace ConsoleApp
         // to modify certain aspects of
         // the HTTP request that you are making
 
-        var options = new Dictionary&lt;string, object>
+        var options = new Dictionary<string, object>
         {
             // set the client for the request
             { "client" , rnClient },
 
             // Adds a custom header that adds an annotation (CCOM version must be set to "v1.4" or "latest"); limited to 40 characters
             { "annotation", "Custom annotation" },
-
-            // Prints request headers for debugging  
-            { "debug", true },
 
             // Adds a custom header to excludes null from results; for use with GET requests only                    
             { "exclude_null", true },
@@ -123,23 +140,22 @@ namespace ConsoleApp
         };
     }
 }
-
-
 ```
 
-## OSvCCSharp.QueryResults example
 
-This is for running one ROQL query. Whatever is allowed by the REST API (limits and sorting) is allowed with this library.
+## HTTP Methods
 
-OSvCCSharp.QueryResults only has one function: 'query', which takes an OSvCCSharp.Client object and string query (example below).
+To use various HTTP Methods to return raw response objects, use the "Connect" object
 
+### POST
 ```C#
+//// OSvCCSharp.Connect.Post(options)
+//// returns a string
 
-using static System.Console;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using static OSvCCSharp.Utils;
+// Here's how you could create a new ServiceProduct object
+// using C# variables, lists, and dictionaries (sort of like JSON)
+
+using OSvCCSharp;
 using static System.Configuration.ConfigurationManager;
 
 namespace ConsoleApp
@@ -149,196 +165,15 @@ namespace ConsoleApp
         static void Main(string[] args)
         {
 
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],    
-                password: AppSettings["OSC_PASSWORD"], 
-                interfaceName: AppSettings["OSC_SITE"]
-            );
+        var rnClient = new OSvCCSharp.Client(
+            interface_: AppSettings["OSC_SITE"],
+            username: AppSettings["OSC_ADMIN"],
+            password: AppSettings["OSC_PASSWORD"],
+            version: "latest"
+        );
 
-            var q = new OSvCCSharp.QueryResults(rnClient);
-            var query = "SELECT * FROM Contacts C WHERE CreatedTime > '2005-01-10T04:00:00Z'";
-            var queryResults = q.Query(query); // Run the query
-            
-            var queryObjects = JsonConvert.DeserializeObject<List<object>>(queryResults);
-            foreach (object queryResult in queryObjects)
+        var newProd = new Dictionary<string, object>()
             {
-                var queryResultString = JsonConvert.SerializeObject(queryResult);
-                JToken token = JObject.Parse(queryResultString);
-                var contactId = (int)token.SelectToken("id");
-                WriteLine($"Here is the contact ID: { contactId }");
-            }
-        }
-    }
-}
-
-
-```
-
-## OSvCCSharp.QueryResultsSet example
-
-This is for running multiple ROQL queries. Whatever is allowed by the REST API (limits and sorting) is allowed with this library.
-
-OSvCCSharp.QueryResultsSet only has one function: 'query', which takes an OSvCCSharp.Client object and string query (example below).
-
-```C#
-
-
-using static System.Console;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using static OSvCCSharp.Utils;
-using static System.Configuration.ConfigurationManager;
-
-namespace ConsoleApp
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],    
-                password: AppSettings["OSC_PASSWORD"], 
-                interfaceName: AppSettings["OSC_SITE"]
-            );
-
-            var mq = new OSvCCSharp.QueryResultsSet(rnClient);
-            var queries = new List<Dictionary<string, string>>()
-            {
-                new Dictionary<string,string>()
-                {
-                    {"query","DESCRIBE answers"}
-                    {"key","answersSchema"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT * FROM answers"}
-                    {"key","answers"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","DESCRIBE serviceProducts"}
-                    {"key","productsSchema"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT * FROM serviceProducts"}
-                    {"key","products"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","DESCRIBE serviceCategories"}
-                    {"key","categoriesSchema"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT * FROM serviceCategories"}
-                    {"key","categories"},
-                },
-            };
-
-            var mqResults = mq.QuerySet(queries);
-            WriteLine(mqResults["products"]);
-            WriteLine(mqResults["productsSchema"]);
-            WriteLine(mqResults["categories"]);
-            WriteLine(mqResults["categoriesSchema"]);
-            WriteLine(mqResults["answers"]);
-            WriteLine(mqResults["answersSchema"]);
-        }
-    }
-}
-
-```
-
-## OSvCCSharp.AnalyticsReportResults
-
-You can create a new instance either by the report 'id' or 'lookupName'.
-
-OSvCCSharp.AnalyticsReportResults only has one function: 'run', which takes an OSvCRuby::Client object.
-
-OSvCCSharp.AnalyticsReportResults have the following properties: 'id', 'lookupName', and 'filters'. More on filters and supported datetime methods are below this OSvCCSharp.AnalyticsReportResults example script.
-
-```C#
-
-using static System.Console;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using static OSvCCSharp.Utils;
-using static System.Configuration.ConfigurationManager;
-
-namespace ConsoleApp
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],    
-                password: AppSettings["OSC_PASSWORD"], 
-                interfaceName: AppSettings["OSC_SITE"]
-            );
-
-            var arr = new OSvCCSharp.AnalyticsReportResults(rnClient);
-            arr.filters = new List<Dictionary<string, string>>()
-            {
-                new Dictionary<string, string>()
-                {
-                    { "name", "search_ex" },
-                    { "values", "Maestro" }
-                }
-            };
-            var arrResults = arr.Run(id: 176);
-            var arrObjects = JsonConvert.DeserializeObject<List<object>>(arrResults);
-            foreach (object arrResult in arrObjects)
-            {
-                WriteLine(JsonConvert.SerializeObject(arrResult));
-            }
-        }
-    }
-}
-
-```
-
-## Basic CRUD operations
-
-### CREATE
-```C#
-
-using System;
-using System.Collections.Generic;
-using static System.Console;
-using static System.Configuration.ConfigurationManager;
-
-namespace ConsoleApp
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            // Client Configuration
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],         
-                password: AppSettings["OSC_PASSWORD"],      
-                interfaceName: AppSettings["OSC_SITE"],
-            );
-
-            //// Connect Object for HTTP Requests
-            var connect = new OSvCCSharp.Connect(rnClient);
-
-            //// POST Request
-            var newProd = new Dictionary<string, object>()
-            {
-                {"adminVisibleInterfaces",new List<Dictionary<string, int>>()
-                {
-                    new Dictionary<string, int>()
-                    {
-                        {"id", 1 }
-                    }
-                }},
                 {"descriptions",new List<Dictionary<string, object>>()
                 {
                     new Dictionary<string, object>()
@@ -403,146 +238,88 @@ namespace ConsoleApp
                 }},
             };
 
-            var createdProduct = connect.Post("serviceProducts", newProd); // returns JSON body
-        }
-    }
-}
-
-```
-
-
-
-
-
-
-### READ
-```C#
-//// OSvCCSharp.get(options, callback)
-//// returns callback function
-// Here's how you could get an instance of ServiceProducts
-
-//// OSvCCSharp.Delete(url)
-//// returns string
-// Here's how you could delete a serviceProduct object
-	
-using System;
-using System.Collections.Generic;
-using static System.Console;
-using static System.Configuration.ConfigurationManager;
-
-namespace ConsoleApp
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            // Client Configuration
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],
-                password: AppSettings["OSC_PASSWORD"],
-                interfaceName: AppSettings["OSC_SITE"],
-                demoSite: true,
-                suppressRules: true
-            );
-
-            //// Connect Object for HTTP Requests
-            var connect = new OSvCCSharp.Connect(rnClient);
-            WriteLine(connect.Get("serviceProducts/174"));   // returns JSON object
-        }
-    }
-}
-```
-
-
-
-
-
-
-### UPDATE
-```C#
-//// OSvCCSharp.Patch(url, json)
-//// returns string
-// Here's how you could update an Answer object
-// using JSON objects
-// to set field information
-
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using static System.Console;
-using static System.Configuration.ConfigurationManager;
-
-namespace ConsoleApp
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            // Client Configuration
-            var rnClient = new OSvCCSharp.Client(
-                username: AppSettings["OSC_ADMIN"],
-                password: AppSettings["OSC_PASSWORD"],
-                interfaceName: AppSettings["OSC_SITE"],
-                suppressRules: true
-            );
-
-            //// Connect Object for HTTP Requests
-            var connect = new OSvCCSharp.Connect(rnClient);
-
-            // Run multiple queries
-            // assign to keys
-
-            var mq = new OSvCCSharp.QueryResultsSet(rnClient);
-            var queries = new List<Dictionary<string, string>>()
+            Dictionary<string, object> options = new Dictionary<string, object>()
             {
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT COUNT() AS count FROM siteInterfaces"}
-                    {"key","interfaceCount"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT serviceProducts.categoryLinks.serviceCategoryList.serviceCategory.id FROM serviceProducts WHERE id = 174"}
-                    {"key","catLinks"},
-                },
-                new Dictionary<string,string>()
-                {
-                    {"query","SELECT serviceProducts.dispositionLinks.serviceDispositionList.serviceDisposition.id FROM serviceProducts WHERE id = 174"}
-                    {"key","dispLinks"},
-                },
+                { "client", rnClient},
+                { "url", "serviceProducts"},
+                { "json", newProd},
+                { "annotation", "Creating a product" }
             };
 
-            var mqResults = mq.QuerySet(queries);
+            var createdProduct = OSvCCSharp.Connect.Post(options); // returns JSON body
+    }
+}
 
-            var interFaceCount = mqResults["interFaceCount"][0]["count"];
-            var catLinks = mqResults["catLinks"];
-            var dispLinks = mqResults["dispLinks"];
+```
 
-            // Build the JSON object
-            var updateJson = new Dictionary<string, object>()
+### GET
+```C#
+//// OSvCCSharp.Connect.Get(options)
+//// returns a string
+// Here's how you could get an instance of ServiceProducts
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var getProductOptions = new Dictionary<string, object>(){
+                { "client", rnClient },
+                { "url" , "serviceProducts/15" },
+                { "annotation", "Fetching product with id of 15" }
+            };
+
+            WriteLine(OSvCCSharp.Connect.Get(getProductOptions)); // returns JSON body
+
+        }
+    }
+}
+```
+
+### PATCH
+```C#
+//// OSvCCSharp.Connect.Patch(options)
+//// returns a string
+// Here's how you could update a serviceProduct object
+// using dictionaries and lists
+// to set field information
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var jsonDataForUpdate = new Dictionary<string, object>()
             {
-                {"descriptions",new List<Dictionary<string, object>>
-                    {
-                    new Dictionary<string, object>()
-                        {
-                            { "labelText","updating a ServiceProduct " },
-                            { "language", new Dictionary<string, int>()
-                                {
-                                    {"id", 1}
-                                }
-                            }
-                        }
-                    }
-                },
-                {"displayOrder",2},
                 {"names",new List<Dictionary<string, object>>
                     {
                     new Dictionary<string, object>()
                         {
-                            { "labelText","updating the privious " },
+                            { "labelText","PRODUCT-TEST-UPDATED" },
                             { "language", new Dictionary<string, int>()
                                 {
                                     {"id", 1}
@@ -553,68 +330,15 @@ namespace ConsoleApp
                 }
             };
 
-            
-            // if the adminvisibleinterfaces count = 0
-            //  then set the first admin interface to ID = 1
+            var patchProductOptions = new Dictionary<string, object>(){
+                { "client", rnClient },
+                { "url" , "serviceProducts/15" },
+                { "annotation", "Fetching product with id of 15" },
+                { "json", jsonDataForUpdate }
+            };
 
-            if(interFaceCount == 0)
-            {
-                updateJson["adminVisibleInterfaces"] = new List<Dictionary<string,object>>{
-                    new Dictionary<string,object>(){
-                           {"id", 1}
-                    }
-                }
-            }
+            WriteLine(OSvCCSharp.Connect.Patch(patchProductOptions)); // returns empty body
 
-
-            foreach (Dictionary<string,object> cl in catLinks)
-            {
-                if ((int)cl["id"] == 1)
-                {
-                    cl["id"] = 2;
-
-                    // Makes a copy of catLinks and returns an arry of these:
-                    // { 'serviceCategory': { "id": catLink["id"]} }
-                    updateJson["categoryLinks"] = catLinks.Select(catLink => new Dictionary<string, Dictionary<string, object>>() {
-                        { "serviceCategory",new Dictionary<string, object>(){
-                            {"id",catLink["id"] }
-                        } }
-                    }).ToArray();
-
-                }
-            }
-
-            
-            // Loop through dispLinks
-            foreach (Dictionary<string,object> dl in dispLinks)
-            {
-                if ((int)dl["id"] == 1)
-                {
-                    dl["id"] = 2;
-
-                    // Makes a copy of dispLinks and returns an arry of these:
-                    // { 'serviceDisposition': { "id": dispLink["id"]} }
-                    updateJson["dispositionLinks"] = dispLinks.Select(dispLink => new Dictionary<string, Dictionary<string, object>>() {
-                        { "serviceDisposition",new Dictionary<string, object>(){
-                            {"id",dispLink["id"] }
-                        } }
-                    }).ToArray();
-
-                }
-            }
-
-            if(interFaceCount == 0)
-            {
-                updateJson["endUserVisibleInterfaces"] = new List<Dictionary<string,object>>{
-                    new Dictionary<string,object>(){
-                           {"id", 1}
-                    }
-                }
-            }
-
-            WriteLine(updateJson);
-
-            var updatedProduct = connect.Post("serviceProducts/174", updateJson); // returns empty string
         }
     }
 }
@@ -622,18 +346,14 @@ namespace ConsoleApp
 
 ```
 
-
- 
 ### DELETE
 ```C#
-//// OSvCCSharp.Delete(url)
-//// returns string
+//// OSvCCSharp.Connect.Delete(options)
+//// returns a string
 // Here's how you could delete a serviceProduct object
-	
-using System;
-using System.Collections.Generic;
 using static System.Console;
 using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
 
 namespace ConsoleApp
 {
@@ -642,20 +362,612 @@ namespace ConsoleApp
         static void Main(string[] args)
         {
 
-            // Client Configuration
             var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
                 username: AppSettings["OSC_ADMIN"],
                 password: AppSettings["OSC_PASSWORD"],
-                interfaceName: AppSettings["OSC_SITE"],
-                demoSite: true,
-                suppressRules: true
+                version: "latest"
             );
 
-            //// Connect Object for HTTP Requests
-            var connect = new OSvCCSharp.Connect(rnClient);
-            WriteLine(connect.Delete("serviceProducts/174"));   // returns empty string
+            var deleteProductOptions = new Dictionary<string, object>(){
+                { "client", rnClient },
+                { "url" , "serviceProducts/15" },
+                { "annotation", "Deleting product with id of 15" }
+            };
+
+            WriteLine(OSvCCSharp.Connect.Delete(deleteProductOptions)); // returns empty body
+
         }
     }
 }
 
+```
+
+
+## Uploading File Attachments
+In order to upload a file attachment, add a "files" property to your options object with an list as it's value. In that list, input the file locations of the files that you wish to upload relative to where the script is ran.
+
+```C#
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+        var rnClient = new OSvCCSharp.Client(
+            interface_: AppSettings["OSC_SITE"],
+            username: AppSettings["OSC_ADMIN"],
+            password: AppSettings["OSC_PASSWORD"],
+            version: "latest"
+        );
+
+        var newProd = new Dictionary<string, object>()
+            {
+                {"primaryContact",new List<Dictionary<string, object>>()
+                {
+                    new Dictionary<string,int>(){
+                            { "id", 1}
+                        } }
+                }
+            };
+
+            Dictionary<string, object> options = new Dictionary<string, object>()
+            {
+                { "client", rnClient},
+                { "url", "serviceProducts"},
+                { "json", newProd},
+                { "annotation", "Creating a product" },
+                { "files", new List<string>{
+                   "./haQE7EIDQVUyzoLDha2SRVsP415IYK8_ocmxgMfyZaw.png"
+                 } }
+            };
+
+            var createdProduct = OSvCCSharp.Connect.Post(options); // returns JSON body
+    }
+}
+
+```
+
+## Downloading File Attachments
+In order to download a file attachment, add a "?download" query parameter to the file attachment URL and send a get request using the OSvCCSharp.Connect.get method. The file will be downloaded to the same location that the script is ran.
+
+```C#
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var getProductOptions = new Dictionary<string, object>(){
+                { "client", rnClient },
+                { "url" , "incidents/24898/fileAttachments/245?download" }
+                { "annotation", "Downloading a file attachment" }
+            };
+
+            WriteLine(OSvCCSharp.Connect.Get(getProductOptions)); // returns JSON body
+
+        }
+    }
+}
+
+```
+
+In order to download multiple attachments for a given object, add a "?download" query parameter to the file attachments URL and send a get request using the OSvCCSharp.Connect.get method. 
+
+All of the files for the specified object will be downloaded and archived in a .tgz file.
+
+```C#
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var getProductOptions = new Dictionary<string, object>(){
+                { "client", rnClient },
+                { "url" , "incidents/24898/fileAttachments?download" }
+                { "annotation", "Downloading all attachments" }
+            };
+
+            WriteLine(OSvCCSharp.Connect.Get(getProductOptions)); // returns JSON body
+
+        }
+    }
+}
+
+```
+
+You can extract the file using [tar](https://askubuntu.com/questions/499807/how-to-unzip-tgz-file-using-the-terminal/499809#499809)
+    
+    $ tar -xvzf ./downloadedAttachment.tgz
+
+## OSvCCSharp.QueryResults example
+
+This is for running one ROQL query. Whatever is allowed by the REST API (limits and sorting) is allowed with this library.
+
+OSvCCSharp.QueryResults only has one function: 'Query', which takes an OSvCCSharp.Client object and string query (example below).
+
+```C#
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            // QueryResults
+            var queryOptions = new Dictionary<string, object>
+            {
+                { "client", rnClient },
+                { "query", "SELECT count(ids) as id_count FROM CONTACTS " },
+                { "annotation", "Running a single query" }
+            };
+
+            WriteLine(OSvCCSharp.QueryResults.Query(queryOptions)); // returns JSON body
+
+        }
+    }
+}
+
+
+```
+## OSvCCSharp.QueryResultsSet example
+
+This is for running multiple queries and assigning the results of each query to a key for further manipulation.
+
+OSvCCSharp.QueryResultsSet only has one function: 'QuerySet', which takes an OSvCCSharp.Client object and multiple query dictionaries (example below).
+
+```C#
+// Pass in each query into a dictionary
+// set query: to the query you want to execute
+// set key: to the value you want the results to of the query to be referenced to
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var querySetOptions = new Dictionary<string, object>
+            {
+                {"client", rnClient },
+                {"queries",  new List<Dictionary<string, string>>()
+                    {
+                        new Dictionary<string,string>()
+                        {
+                            {"key","answersSchema"},
+                            {"query","DESCRIBE answers"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","answers"},
+                            {"query","SELECT * FROM ANSWERS LIMIT 1"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","serviceCategoriesSchema"},
+                            {"query","DESCRIBE serviceCategories"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","contacts"},
+                            SELECT * FROM serviceCategories
+                            {"query","SELECT * FROM serviceCategories"}
+                        }
+                    }},
+                { "annotation", "Running Multiple queries" }
+            };
+
+            var mqResults = OSvCCSharp.QueryResultsSet.QuerySet(querySetOptions);
+            
+            WriteLine(mqResults["answersSchema"]);
+            
+            //  Results for "DESCRIBE ANSWERS"
+            // 
+            //  [
+            //   {
+            //     "Name": "id",
+            //     "Type": "Integer",
+            //     "Path": ""
+            //   },
+            //   {
+            //     "Name": "lookupName",
+            //     "Type": "String",
+            //     "Path": ""
+            //   },
+            //   {
+            //     "Name": "createdTime",
+            //     "Type": "String",
+            //     "Path": ""
+            //   }
+            //   ... everything else including customfields and objects...
+            // ]
+            WriteLine(mqResults["answers"]);
+
+            //  Results for "SELECT * FROM ANSWERS LIMIT 1"
+            // 
+            //  [
+            //   {
+            //     "id": 1,
+            //     "lookupName": 1,
+            //     "createdTime": "2016-03-04T18:25:50Z",
+            //     "updatedTime": "2016-09-12T17:12:14Z",
+            //     "accessLevels": 1,
+            //     "adminLastAccessTime": "2016-03-04T18:25:50Z",
+            //     "answerType": 1,
+            //     "expiresDate": null,
+            //     "guidedAssistance": null,
+            //     "keywords": null,
+            //     "language": 1,
+            //     "lastAccessTime": "2016-03-04T18:25:50Z",
+            //     "lastNotificationTime": null,
+            //     "name": 1,
+            //     "nextNotificationTime": null,
+            //     "originalReferenceNumber": null,
+            //     "positionInList": 1,
+            //     "publishOnDate": null,
+            //     "question": null,
+            //     "solution": "<HTML SOLUTION WITH INLINE CSS>",
+            //     "summary": "SPRING IS ALMOST HERE!",
+            //     "updatedByAccount": 16,
+            //     "uRL": null
+            //   }
+            // ]
+
+            WriteLine(mqResults["serviceCategoriesSchema"]);
+
+            //  Results for "DESCRIBE SERVICECATEGORIES"
+            //  
+            // [
+            // ... skipping the first few ... 
+            //  {
+            //     "Name": "adminVisibleInterfaces",
+            //     "Type": "SubTable",
+            //     "Path": "serviceCategories.adminVisibleInterfaces"
+            //   },
+            //   {
+            //     "Name": "descriptions",
+            //     "Type": "SubTable",
+            //     "Path": "serviceCategories.descriptions"
+            //   },
+            //   {
+            //     "Name": "displayOrder",
+            //     "Type": "Integer",
+            //     "Path": ""
+            //   },
+            //   {
+            //     "Name": "endUserVisibleInterfaces",
+            //     "Type": "SubTable",
+            //     "Path": "serviceCategories.endUserVisibleInterfaces"
+            //   },
+            //   ... everything else include parents and children ...
+            // ]
+            
+            WriteLine(mqResults["serviceCategories"]);
+
+            //  Results for "SELECT * FROM serviceCategories"
+            // 
+            //  [
+            //   {
+            //     "id": 3,
+            //     "lookupName": "Manuals",
+            //     "createdTime": null,
+            //     "updatedTime": null,
+            //     "displayOrder": 3,
+            //     "name": "Manuals",
+            //     "parent": 60
+            //   },
+            //   {
+            //     "id": 4,
+            //     "lookupName": "Installations",
+            //     "createdTime": null,
+            //     "updatedTime": null,
+            //     "displayOrder": 4,
+            //     "name": "Installations",
+            //     "parent": 60
+            //   },
+            //   {
+            //     "id": 5,
+            //     "lookupName": "Downloads",
+            //     "createdTime": null,
+            //     "updatedTime": null,
+            //     "displayOrder": 2,
+            //     "name": "Downloads",
+            //     "parent": 60
+            //   },
+            //   ... you should get the idea by now ...
+            // ]
+        }
+    }
+}
+                    
+
+
+```
+## OSvCCSharp.AnalyticsReportsResults
+
+You can create a new instance either by the report 'id' or 'lookupName'.
+
+OSvCCSharp.AnalyticsReportsResults only has one function: 'run', which takes an OSvCCSharp.Client object.
+
+Pass in the 'id', 'lookupName', and 'filters' in the options data object to set the report and any filters. 
+```C#
+using OSvCCSharp;
+using static System.Configuration.ConfigurationManager;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using static System.Console;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            //// AnalyticsReportResults
+            var jsonData = new Dictionary<string, object>{
+                { "id", 176 },
+                { "limit", 2 },
+                { "filters", new Dictionary<string, string>{
+                    { "name", "search_ex" },
+                    { "values", "Maestro" }
+                }}
+            };
+
+            var arrOptions = new Dictionary<string, object>
+            {
+                { "client", rnClient},
+                { "json", jsonData },
+                { "annotation", "Running Reports" }
+            };
+
+            var arrResults = OSvCCSharp.AnalyticsReportResults.Run(arrOptions);
+            var arrObjects = JsonConvert.DeserializeObject<List<object>>(arrResults);
+            foreach (object arrResult in arrObjects)
+            {
+                WriteLine(JsonConvert.SerializeObject(arrResult));
+            }
+
+        }
+    }
+}
+
+```
+
+## Bulk Delete
+This library makes it easy to use the Bulk Delete feature within the latest versions of the REST API. 
+
+You can either use a QueryResults or QueryResultsSet object in order to run bulk delete queries.
+
+Before you can use this feature, make sure that you have the [correct permissions set up for your profile](https://docs.oracle.com/en/cloud/saas/service/18b/cxsvc/c_osvc_bulk_delete.html#BulkDelete-10689704__concept-212-37785F91).
+
+Here is an example of the how to use the Bulk Delete feature: 
+```C#
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            // QueryResults
+            var queryOptions = new Dictionary<string, object>
+            {
+                { "client", rnClient },
+                { "query", "DELETE from incidents LIMIT 10" },
+                { "annotation", "Running a single query" }
+            };
+
+            WriteLine(OSvCCSharp.QueryResults.Query(queryOptions)); // returns JSON body
+
+        }
+    }
+}
+```
+## Performing Session Authentication
+
+1. Create a custom script with the following code and place in the "Custom Scripts" folder in the File Manager:
+
+```php
+<?php
+
+// Find our position in the file tree
+if (!defined('DOCROOT')) {
+$docroot = get_cfg_var('doc_root');
+define('DOCROOT', $docroot);
+}
+ 
+/************* Agent Authentication ***************/
+ 
+// Set up and call the AgentAuthenticator
+require_once (DOCROOT . '/include/services/AgentAuthenticator.phph');
+
+// get username and password
+$username = $_GET['username'];
+$password = $_GET['password'];
+ 
+// On failure, this includes the Access Denied page and then exits,
+// preventing the rest of the page from running.
+echo json_encode(AgentAuthenticator::authenticateCredentials($username,$password));
+
+```
+2. Create a node script similar to the following and it should connect:
+
+```C#
+// Require necessary libraries
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            Task<string> sessionJson = GetSessionId();
+            JToken token = JObject.Parse(sessionJson.Result);
+            var sessionId = (string)token.SelectToken("session_id");
+
+            var rnSessionClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                session: sessionId
+            );
+
+            Dictionary<string, object> sessionOptions = new Dictionary<string, object>(){
+                { "client", rnSessionClient },
+                { "url" , "incidents/24898/fileAttachments/245?download" }
+            };
+
+            ////// GET Request
+            WriteLine(OSvCCSharp.Connect.Get(sessionOptions)); // returns JSON body
+
+        }
+
+        static async Task<string> GetSessionId()
+        {
+            var url = $"https://{AppSettings["OSC_SITE"]}.custhelp.com/cgi-bin/";
+            // add the location of the above file
+            url += $"{AppSettings["OSC_CONFIG"]}.cfg/php/custom/login_test.php";
+            // add the credentials for getting a session ID
+            url += $"?username={AppSettings["OSC_ADMIN"]}&password={AppSettings["OSC_PASSWORD"]}";
+
+            HttpClient client = new HttpClient();
+            var response = await client.GetAsync(url);
+            var contents = await response.Content.ReadAsStringAsync();
+
+            return contents;
+        }
+    }
+}
+```
+
+## Running multiple ROQL Queries in parallel
+Instead of running multiple queries in with 1 GET request, you can run multiple GET requests and combine the results by adding a "parallel" property to the options object.
+
+```C#
+using static System.Console;
+using static System.Configuration.ConfigurationManager;
+using OSvCCSharp;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            var rnClient = new OSvCCSharp.Client(
+                interface_: AppSettings["OSC_SITE"],
+                username: AppSettings["OSC_ADMIN"],
+                password: AppSettings["OSC_PASSWORD"],
+                version: "latest"
+            );
+
+            var querySetOptions = new Dictionary<string, object>
+            {
+                {"client", rnClient },
+                {"parallel", true },
+                {"queries",  new List<Dictionary<string, string>>()
+                    {
+                        new Dictionary<string,string>()
+                        {
+                            {"key","incidents"},
+                            {"query","select id from incidents LIMIT 20000"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","serviceProducts"},
+                            {"query","select id, name from serviceProducts"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","serviceCategories"},
+                            {"query","select id, name from serviceCategories"}
+                        },
+                        new Dictionary<string,string>()
+                        {
+                            {"key","contacts"},
+                            {"query","select id from contacts"}
+                        }
+                    }},
+                { "annotation", "Running Multiple queries" }
+            };
+
+            var mqResults = OSvCCSharp.QueryResultsSet.QuerySet(querySetOptions);
+            WriteLine(mqResults["incidents"]);
+            WriteLine(mqResults["serviceProducts"]);
+            WriteLine(mqResults["serviceCategories"]);
+            WriteLine(mqResults["contacts"]);
 ```

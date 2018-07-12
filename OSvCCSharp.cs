@@ -320,22 +320,16 @@ namespace OSvCCSharp
                 var fileAttachmentList = new List<Dictionary<string, object>>();
                 foreach (var file in filesToUpload)
                 {
-                    try
-                    {
-                        Dictionary<string, object> fileHash = new Dictionary<string, object> { };
-                        string fileName = Path.GetFileName(file);
-                        Byte[] bytes = File.ReadAllBytes(file);
-                        String fileData = Convert.ToBase64String(bytes);
-                        fileHash.Add("fileName", fileName);
-                        fileHash.Add("data", fileData);
-                        fileAttachmentList.Add(fileHash);
-                    }
-                    catch
-                    {
-                        // Ignore the error, push it to the network to return a 400 error
-                        // As much as I hate this, it's hard to do this without raising an
-                        // an exception which will halt the program
-                    }
+                    // Break when there is an error
+                    // We should break things early to
+                    // make resilient programs
+                    Dictionary<string, object> fileHash = new Dictionary<string, object> { };
+                    string fileName = Path.GetFileName(file);
+                    Byte[] bytes = File.ReadAllBytes(file);
+                    String fileData = Convert.ToBase64String(bytes);
+                    fileHash.Add("fileName", fileName);
+                    fileHash.Add("data", fileData);
+                    fileAttachmentList.Add(fileHash);
                 }
                 data.Add("fileAttachments", fileAttachmentList);
             }
