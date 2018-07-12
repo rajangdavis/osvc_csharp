@@ -914,7 +914,7 @@ namespace ConsoleApp
 ```
 
 ## Running multiple ROQL Queries in parallel
-Instead of running multiple queries in with 1 GET request, you can run multiple GET requests and combine the results by adding a "parallel" property to the options object.
+Instead of running multiple queries in with 1 GET request, you can run multiple GET requests and combine the results by adding a "parallel" property to the options dictionary.
 
 ```C#
 using static System.Console;
