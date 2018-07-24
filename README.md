@@ -82,6 +82,8 @@ namespace ConsoleApp
             version: "v1.4",                    // Changes REST API version, default is 'v1.3'
             no_ssl_verify: true,                // Turns off SSL verification
             suppress_rules: true,               // Suppresses Business Rules
+            suppress_event: true,               // Suppresses External Events
+            suppress_all: true,               // Suppresses both Business Rules and External Events
             access_token: "My access token"     // Adds an access token to ensure quality of service
         );
     }
