@@ -31,7 +31,7 @@ The features that work to date are as follows:
 Here are the _spicier_ (more advanced) features:
 
 1. [Bulk Delete](#bulk-delete)
-2. [Running multiple ROQL Queries in parallel](#running-multiple-roql-queries-in-parallel)
+2. [Running multiple ROQL Queries concurrently](#running-multiple-roql-queries-concurrently)
 3. [Performing Session Authentication](#performing-session-authentication)
 
 ## Installing C# and the .NET runtime (for Windows)
@@ -913,8 +913,8 @@ namespace ConsoleApp
 }
 ```
 
-## Running multiple ROQL Queries in parallel
-Instead of running multiple queries in with 1 GET request, you can run multiple GET requests and combine the results by adding a "parallel" property to the options dictionary.
+## Running multiple ROQL Queries concurrently
+Instead of running multiple queries in with 1 GET request, you can run multiple GET requests and combine the results by adding a "concurrent" property to the options dictionary.
 
 ```C#
 using static System.Console;
@@ -938,7 +938,7 @@ namespace ConsoleApp
             var querySetOptions = new Dictionary<string, object>
             {
                 {"client", rnClient },
-                {"parallel", true },
+                {"concurrent", true },
                 {"queries",  new List<Dictionary<string, string>>()
                     {
                         new Dictionary<string,string>()

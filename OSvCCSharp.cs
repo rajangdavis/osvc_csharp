@@ -89,6 +89,8 @@ namespace OSvCCSharp
         public string version = "v1.3";
         public bool no_ssl_verify;
         public bool suppress_rules;
+        public bool suppress_events;
+        public bool suppress_all;
         public bool demo_site;
         public string access_token;
 
@@ -100,6 +102,8 @@ namespace OSvCCSharp
         public void SetOAuth(string oauthVar) => oauth = oauthVar;
         public void ChangeSSL(bool noSslVerifyVar) => no_ssl_verify = noSslVerifyVar;
         public void SuppressRules(bool suppressRulesVar) => suppress_rules = suppressRulesVar;
+        public void SuppressEvents(bool suppressEventsVar) => suppress_events = suppressEventsVar;
+        public void SuppressAll(bool suppressAllVar) => suppress_all = suppressAllVar;
         public void IsDemo(bool demoSite) => demo_site = demoSite;
         public void SetAccessToken(string at) => access_token = at;
     }
@@ -108,7 +112,7 @@ namespace OSvCCSharp
     {
         internal Configuration config;
 
-        public Client(string interface_, string username = "", string password = "", string version = "v1.3", string session = "", string oauth = "", string access_token = "", bool no_ssl_verify = false, bool suppress_rules = false, bool demo_site = false)
+        public Client(string interface_, string username = "", string password = "", string version = "v1.3", string session = "", string oauth = "", string access_token = "", bool no_ssl_verify = false, bool suppress_rules = false, bool suppress_events = false, bool suppress_all = false, bool demo_site = false)
         {
             Configuration configuration = new Configuration();
             configuration.SetUsername(username);
@@ -118,6 +122,9 @@ namespace OSvCCSharp
             configuration.SetVersion(version);
             configuration.SetOAuth(oauth);
             configuration.ChangeSSL(no_ssl_verify);
+            configuration.SuppressRules(suppress_rules);
+            configuration.SuppressEvents(suppress_events);
+            configuration.SuppressAll(suppress_all);
             configuration.IsDemo(demo_site);
             configuration.SetAccessToken(access_token);
 
@@ -128,7 +135,6 @@ namespace OSvCCSharp
 
     public static class Connect
     {
-
         private static string DownloadFileCheck(Dictionary<string, object> downloadOptions)
         {
             string url = (string)downloadOptions["url"];
@@ -251,7 +257,6 @@ namespace OSvCCSharp
 
             try
             {
-
                 if (optionsForWebRequest.ContainsKey("downloadFileName"))
                 {
 
@@ -387,7 +392,17 @@ namespace OSvCCSharp
         {
             if (client.config.suppress_rules == true)
             {
-                headers.Add("OSvC-CREST-Suppress-All", "true");
+                headers.Add("OSvC-CREST-Suppress-Rules", "yes");
+            }
+
+            if (client.config.suppress_events == true)
+            {
+                headers.Add("OSvC-CREST-Suppress-ExternalEvents", "yes");
+            }
+
+            if (client.config.suppress_events == true)
+            {
+                headers.Add("OSvC-CREST-Suppress-All", "yes");
             }
             return headers;
         }
@@ -529,7 +544,7 @@ namespace OSvCCSharp
             string finalResults = "";
             var finalResultsList = new List<string> { };
 
-            if (options.ContainsKey("parallel") && (bool)options["parallel"] == true)
+            if (options.ContainsKey("concurrent") && (bool)options["concurrent"] == true)
             {
                 var taskList = new List<Task<String>> { };
                 foreach (var query in queryArr)
@@ -569,7 +584,16 @@ namespace OSvCCSharp
                 {
                     for (int i = 0; i < keyMap.Count; i++)
                     {
-                        queryResultsSet[keyMap[i]] = finalResultsList[i];
+                        if (queryResultsSet.ContainsKey(keyMap[i]))
+                        {
+                            queryResultsSet[keyMap[i]] = queryResultsSet[keyMap[i]].Replace("]", ",");
+                            var cleanResults = finalResultsList[i].Replace("[", "");
+                            queryResultsSet[keyMap[i]] = string.Concat(queryResultsSet[keyMap[i]], cleanResults);
+                        }
+                        else
+                        {
+                            queryResultsSet[keyMap[i]] = finalResultsList[i];
+                        }
                     }
                 }
                 else
@@ -587,7 +611,16 @@ namespace OSvCCSharp
             {
                 for (int i = 0; i < keyMap.Count; i++)
                 {
-                    queryResultsSet[keyMap[i]] = finalResults;
+                    if (queryResultsSet.ContainsKey(keyMap[i]))
+                    {
+                        queryResultsSet[keyMap[i]] = queryResultsSet[keyMap[i]].Replace("]", ",");
+                        var cleanResults = finalResultsList[i].Replace("[", "");
+                        queryResultsSet[keyMap[i]] = string.Concat(queryResultsSet[keyMap[i]], cleanResults);
+                    }
+                    else
+                    {
+                        queryResultsSet[keyMap[i]] = finalResultsList[i];
+                    }
                 }
 
                 return queryResultsSet;

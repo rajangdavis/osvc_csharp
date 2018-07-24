@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>OSvCCSharp</id>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <title>OSvCCSharp</title>
     <authors>rajangdavis</authors>
     <owners>rajangdavis</owners>
@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/rajangdavis/osvc_csharp</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>An unofficial C# wrapper for Oracle Service Cloud (fka RightNow Technologies) REST API</description>
-    <releaseNotes>First Release</releaseNotes>
+    <releaseNotes>Second Release</releaseNotes>
     <copyright>Copyright 2018</copyright>
     <tags>Oracle Service Cloud</tags>
     <dependencies>
